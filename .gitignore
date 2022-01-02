@@ -1,0 +1,6 @@
+*.o
+*.txt
+*-lex
+*.cclex
+*.swp
+*.swo
