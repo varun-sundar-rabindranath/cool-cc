@@ -18,13 +18,11 @@ DFA::DFA(const std::string& regex) :
   nodepos_symbols_{},
   nfa_{},
   dfa_{},
-  dfa_accepting_states_{},
-  regex_tree_{nullptr} {
+  dfa_accepting_states_{} {
 
   // Make regex tree
   spdlog::debug("Making Regex Tree for {} ...", augmented_regex_);
   regex_tree_ = MakeRegexTree(augmented_regex_);
-
 
   // Annotate leaf nodes sequentially from left to right
   spdlog::debug("Annotating leaf nodes ...");
@@ -63,10 +61,6 @@ DFA::DFA(const std::string& regex) :
 }
 
 DFA::~DFA() {
-  // Delete regex tree
-  DeleteRegexTree(regex_tree_);
-  regex_tree_ = nullptr;
-
   // clear all maps
   nodepos_symbols_.clear();
   nfa_.clear();
@@ -200,7 +194,7 @@ void DFA::SubsetConstruction() {
   // What is the accepting node ? - Any node that has the nfa accepting state is a dfa accepting staet
   assert (regex_tree_->GetRightSubTree()->GetNodeType() == NodeType::NODE_TYPE_LEAF);
   const int nfa_accepting_state{
-      dynamic_cast<const LeafNode*>(regex_tree_->GetRightSubTree())->GetNodePosition()};
+      dynamic_cast<const LeafNode*>(regex_tree_->GetRightSubTree().get())->GetNodePosition()};
   spdlog::debug(fmt::format("nfa accepting state {}", nfa_accepting_state));
   std::unordered_map<std::string, int> nfa_states_to_dfa_state_map;
   int dfa_state_idx = 0;
@@ -250,7 +244,7 @@ void DFA::SubsetConstruction() {
     nfa_states_to_dfa_state_map.at(set_to_string(seed_nfa_states));
 }
 
-Node* DFA::MakeRegexTree(const std::string& regex) {
+std::shared_ptr<Node> DFA::MakeRegexTree(const std::string& regex) {
 
   /* A star node always corresponds to the symbol before the star.
    * Some examples,
@@ -344,16 +338,16 @@ Node* DFA::MakeRegexTree(const std::string& regex) {
 
   // In the given regex if you encounter a '/' use the next character
 
-  auto process_symbol = [&](const std::string& s, Node* const tree) -> Node* {
+  auto process_symbol = [&](const std::string& s, const std::shared_ptr<Node> tree) -> std::shared_ptr<Node> {
     // Make a leaf node
     if (tree) {
-      return new CatNode(tree, new LeafNode(s));
+      return std::make_shared<CatNode>(tree, std::make_shared<LeafNode>(s));
     } else {
-      return new LeafNode(s);
+      return std::make_shared<LeafNode>(s);
     }
   };
 
-  Node* tree = nullptr;
+  std::shared_ptr<Node> tree;
   std::size_t sptr = 0;
   while (sptr < regex.size()) {
 
@@ -378,7 +372,7 @@ Node* DFA::MakeRegexTree(const std::string& regex) {
       const int paren_str_len = matching_close_paren - sptr + 1;
       if (tree) {
 	// Make a cat node
-	tree = new CatNode(tree, MakeRegexTree(regex.substr(sptr + 1, paren_str_len - 2)));
+	tree = std::make_shared<CatNode>(tree, MakeRegexTree(regex.substr(sptr + 1, paren_str_len - 2)));
       } else {
 	tree = MakeRegexTree(regex.substr(sptr + 1, paren_str_len - 2));
       }
@@ -397,23 +391,25 @@ Node* DFA::MakeRegexTree(const std::string& regex) {
     if (is_symbol(c)) {
       // Make a leaf node
       if (tree) {
-	tree = new CatNode(tree, new LeafNode(std::string{c}));
+	tree = std::make_shared<CatNode>(tree,
+					 std::make_shared<LeafNode>(std::string{c}));
       } else {
-	tree = new LeafNode(std::string{c});
+	tree = std::make_shared<LeafNode>(std::string{c});
       }
     }
 
     if (is_star(c)) {
       // Make a * node; There must be an existing tree
       assert (tree);
-      tree = new StarNode(tree);
+      tree = std::make_shared<StarNode>(tree);
     }
 
     if (is_or(c)) {
       // Make an OR node; there must be an existing tree
       assert (tree);
-      tree = new ORNode(
-	tree, MakeRegexTree(regex.substr(sptr + 1, regex.size() - sptr + 1)));
+      tree = std::make_shared<ORNode>(
+	tree,
+       	MakeRegexTree(regex.substr(sptr + 1, regex.size() - sptr + 1)));
       // The rest of the regex is taken care of
       break;
     }
@@ -424,6 +420,7 @@ Node* DFA::MakeRegexTree(const std::string& regex) {
   return tree;
 }
 
+#if 0
 void DFA::DeleteRegexTree(Node* const tree) {
 
   if (tree) {
@@ -444,14 +441,15 @@ void DFA::DeleteRegexTree(Node* const tree) {
     }
   }
 }
+#endif
 
-void DFA::MarkLeafNodesLeftToRight(Node* const root) {
+void DFA::MarkLeafNodesLeftToRight(const std::shared_ptr<Node> root) {
   assert (root);
 
   int left_to_right_idx = 1;
 
   // Do a DFS - This by default would access leaf nodes from left to right
-  std::stack<Node*> nodes;
+  std::stack<std::shared_ptr<Node>> nodes;
   nodes.push(root);
 
   while(!nodes.empty()) {
@@ -459,7 +457,7 @@ void DFA::MarkLeafNodesLeftToRight(Node* const root) {
     nodes.pop();
 
     if (node->GetNodeType() == NodeType::NODE_TYPE_LEAF) {
-      dynamic_cast<LeafNode*>(node)->SetNodePosition(left_to_right_idx++);
+      dynamic_cast<LeafNode*>(node.get())->SetNodePosition(left_to_right_idx++);
     }
 
     // Put children on to the stack
@@ -470,12 +468,12 @@ void DFA::MarkLeafNodesLeftToRight(Node* const root) {
   }
 }
 
-void DFA::ConstructNodeposSymbols(const Node* const tree) {
+void DFA::ConstructNodeposSymbols(const std::shared_ptr<Node> tree) {
   assert(tree);
 
   nodepos_symbols_.clear();
   // Need to access all leaf nodes - Do a DFS
-  std::stack<const Node*> nodes;
+  std::stack<std::shared_ptr<Node>> nodes;
   nodes.push(tree);
 
   while (!nodes.empty()) {
@@ -483,8 +481,8 @@ void DFA::ConstructNodeposSymbols(const Node* const tree) {
     nodes.pop();
 
     if (node->GetNodeType() == NodeType::NODE_TYPE_LEAF) {
-      nodepos_symbols_.insert({dynamic_cast<const LeafNode*>(node)->GetNodePosition(),
-                               dynamic_cast<const LeafNode*>(node)->GetSymbols()});
+      nodepos_symbols_.insert({dynamic_cast<const LeafNode*>(node.get())->GetNodePosition(),
+                               dynamic_cast<const LeafNode*>(node.get())->GetSymbols()});
     }
 
     // Put children on to the stack
@@ -495,7 +493,7 @@ void DFA::ConstructNodeposSymbols(const Node* const tree) {
   }
 }
 
-void DFA::RegexTreeToNFA(const Node* const tree) {
+void DFA::RegexTreeToNFA(const std::shared_ptr<Node> tree) {
   assert (tree);
   // Clear existing NFA if any
   nfa_.clear();
@@ -517,7 +515,7 @@ void DFA::RegexTreeToNFA(const Node* const tree) {
 
   // TODO - Really need a dfs utility
   // Need to access all leaf nodes - Do a DFS
-  std::stack<const Node*> nodes;
+  std::stack<std::shared_ptr<Node>> nodes;
   nodes.push(tree);
 
   while (!nodes.empty()) {
@@ -600,10 +598,10 @@ void DFA::RegexTreeToNFA(const Node* const tree) {
   } // followpos of all positions
 }
 
-void DFA::DrawRegexTree(const Node* const tree) {
+void DFA::DrawRegexTree(const std::shared_ptr<Node> tree) {
 #define TOP_INDENT 40
 #define CHILD_INDENT 0
-  std::queue<std::pair<const Node*, int> > q;
+  std::queue<std::pair<const std::shared_ptr<Node>, int> > q;
   q.push({tree, TOP_INDENT});
   // Whenever there is a nullptr it means that it is the next level
   q.push({nullptr, -1});
@@ -647,7 +645,7 @@ void DFA::DrawRegexTree(const Node* const tree) {
 #undef CHILD_INDENT
 }
 
-void DFA::InorderTraversal(const Node* const tree) {
+void DFA::InorderTraversal(const std::shared_ptr<Node> tree) {
   if(tree) {
     InorderTraversal(tree->GetLeftSubTree());
     spdlog::info(fmt::format("Inorder {}", tree->PrintNode()));

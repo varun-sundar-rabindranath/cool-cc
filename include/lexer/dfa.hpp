@@ -6,6 +6,7 @@
 #include <vector>
 #include <lexer/regex_tree_nodes.hpp>
 #include <unordered_map>
+#include <memory>
 
 class DFA {
 public:
@@ -51,30 +52,32 @@ private:
   int dfa_start_state_{-1};
   int current_dfa_state_{-1};
 
-  Node* regex_tree_{nullptr};
+  std::shared_ptr<Node> regex_tree_{nullptr};
 
-  Node* MakeRegexTree(const std::string& regex);
+  std::shared_ptr<Node> MakeRegexTree(const std::string& regex);
 
+#if 0
   void DeleteRegexTree(Node* tree);
+#endif
 
   // Number leaf nodes from left to right
-  void MarkLeafNodesLeftToRight(Node* const tree);
+  void MarkLeafNodesLeftToRight(const std::shared_ptr<Node> tree);
 
   // Get leaf node symbols based on left-to-right leaf annotations
-  void ConstructNodeposSymbols(const Node* const tree);
+  void ConstructNodeposSymbols(const std::shared_ptr<Node> tree);
 
   // Construct NFA transitions from regex tree
-  void RegexTreeToNFA(const Node* const tree);
+  void RegexTreeToNFA(const std::shared_ptr<Node> tree);
 
   void SubsetConstruction();
 
   /** Utilities **/
 
   // Draw regex tree - utility
-  void DrawRegexTree(const Node* const tree);
+  void DrawRegexTree(const std::shared_ptr<Node> tree);
 
   // Inorder Traversal - utility
-  void InorderTraversal(const Node* const tree);
+  void InorderTraversal(const std::shared_ptr<Node> tree);
 
   void PrintNFATransitions();
 

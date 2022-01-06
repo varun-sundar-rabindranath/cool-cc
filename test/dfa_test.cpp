@@ -13,6 +13,10 @@ const std::string MISC_REGEX{"((a|b)*)abb"};
 const VECTOR_STRING MISC_PASS {"abb", "aabb", "babb", "ababb"};
 const VECTOR_STRING MISC_FAIL {"abba", "bbba", ""};
 
+const std::string CLASS_REGEX{"(class|Class)"};
+const VECTOR_STRING CLASS_PASS {"class", "Class"};
+const VECTOR_STRING CLASS_FAIL {"class1", "CLASS", "clASs"};
+
 const std::string INTEGERS_REGEX{"(0|[1-9]([0-9]*))"};
 const VECTOR_STRING INTEGERS_PASS {"0", "10", "900200"};
 const VECTOR_STRING INTEGERS_FAIL {"000", "01", "", "00123"};
@@ -83,6 +87,7 @@ void dfa_test() {
   }
 
   TEST(MISC_REGEX, MISC_PASS, MISC_FAIL)
+  TEST(CLASS_REGEX, CLASS_PASS, CLASS_FAIL)
   TEST(INTEGERS_REGEX, INTEGERS_PASS, INTEGERS_FAIL)
   TEST(IDENTIFIER_REGEX, IDENTIFIER_PASS, IDENTIFIER_FAIL)
   TEST(TYPE_REGEX, TYPE_PASS, TYPE_FAIL)

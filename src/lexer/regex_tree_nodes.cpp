@@ -7,7 +7,8 @@
 
 Node::Node() = default;
 
-ORNode::ORNode(Node* const left, Node* const right) {
+ORNode::ORNode(const std::shared_ptr<Node> left,
+	       const std::shared_ptr<Node> right) {
   assert (left);
   assert (right);
 
@@ -57,7 +58,8 @@ std::string ORNode::PrintNode()  const {
 		     fp_string, lp_string);
 }
 
-CatNode::CatNode(Node* const left, Node* const right) {
+CatNode::CatNode(const std::shared_ptr<Node> left,
+		 const std::shared_ptr<Node> right) {
   assert (left);
   assert (right);
 
@@ -123,7 +125,7 @@ std::string CatNode::PrintNode()  const {
 		     fp_string, lp_string);
 }
 
-StarNode::StarNode(Node* const left) {
+StarNode::StarNode(const std::shared_ptr<Node> left) {
   assert(left);
 
   node_type_ = NodeType::NODE_TYPE_STAR;

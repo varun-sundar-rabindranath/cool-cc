@@ -166,7 +166,10 @@ void Lexer::ConstructAutomatons() {
 
   for (const auto& tr : token_regex_precedence_) {
     spdlog::debug("{} - {}", tr.first, tr.second);
-    automatons_.insert({tr.first, std::make_shared<DFA>(tr.second)});
+    auto dfa{std::make_shared<DFA>(tr.second)};
+    automatons_.insert({tr.first, dfa});
+    // TODO For some reason the following gives an error !!
+    //automatons_.insert({tr.first, std::make_shared<DFA>(tr.second)});
   }
 }
 

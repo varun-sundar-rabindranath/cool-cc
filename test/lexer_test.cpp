@@ -112,6 +112,11 @@ void RunTests(const LexerTestSettings& settings) {
 
 int main(int argc, char *argv[]) {
 
+#if defined(CCDEBUG)
+  spdlog::set_level(
+        static_cast<spdlog::level::level_enum>(spdlog::level::level_enum::debug));
+#endif
+
   LexerTestSettings settings;
 
   CLI::App app{"lexer_test - Lexer Test File"};

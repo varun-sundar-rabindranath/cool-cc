@@ -4,6 +4,7 @@
 #include <unordered_set>
 #include <cassert>
 #include <set>
+#include <memory>
 
 enum NodeType {
   NODE_TYPE_OR = 0,
@@ -24,8 +25,8 @@ public:
   virtual std::string PrintNode() const = 0;
 
   int GetNumNodes() const { return num_nodes_; }
-  Node* GetLeftSubTree() const { return left_; }
-  Node* GetRightSubTree() const { return right_; }
+  std::shared_ptr<Node> GetLeftSubTree() const { return left_; }
+  std::shared_ptr<Node> GetRightSubTree() const { return right_; }
   NodeType GetNodeType() const { return node_type_; }
   bool GetIsNullable() const { return is_nullable_; }
   std::unordered_set<int> GetFirstPos() const { return first_pos_; }
@@ -34,8 +35,8 @@ public:
 protected:
   NodeType node_type_{NODE_TYPE_INVALID};
 
-  Node* left_{nullptr};
-  Node* right_{nullptr};
+  std::shared_ptr<Node> left_{nullptr};
+  std::shared_ptr<Node> right_{nullptr};
 
   int num_nodes_{0};
   std::unordered_set<int> first_pos_;
@@ -45,7 +46,7 @@ protected:
 
 class ORNode final : public Node {
 public:
-  ORNode(Node* const left, Node* const right);
+  ORNode(const std::shared_ptr<Node> left, const std::shared_ptr<Node> right);
   ~ORNode() = default;
 
   void ComputeFirstPos();
@@ -56,7 +57,7 @@ public:
 
 class CatNode final : public Node {
 public:
-  CatNode(Node* const left, Node* const right);
+  CatNode(const std::shared_ptr<Node> left, const std::shared_ptr<Node> right);
   ~CatNode() = default;
 
   void ComputeFirstPos();
@@ -67,7 +68,7 @@ public:
 
 class StarNode final : public Node {
 public:
-  StarNode(Node* const left); // Star is unary; Use only the left child
+  StarNode(const std::shared_ptr<Node> left); // Star is unary; Use only the left child
   ~StarNode() = default;
 
   void ComputeFirstPos();
