@@ -44,6 +44,14 @@ struct ProductionElement {
     return stream;
   }
 
+  bool IsTerminal() const {
+    return type == ProductionElementType::TERMINAL;
+  }
+
+  bool IsNonTerminal() const {
+    return type == ProductionElementType::NON_TERMINAL;
+  }
+
   std::string to_string() const {
     std::string s;
     if (type == ProductionElementType::TERMINAL) { s += std::string(" TERMINAL - "); }

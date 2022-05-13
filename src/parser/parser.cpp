@@ -232,7 +232,7 @@ void Parser::ComputeFollow() {
 
   while (follow_items != follow_items_prev) {
     // Iterate follow set computations
-    ComputeFollowPassDFS(); // basically a DFS that updates the follow-set of NT
+    ComputeFollowPass();
 
     // Sum sizes of all the follow sets
     follow_items_prev = follow_items;
@@ -247,34 +247,10 @@ void Parser::ComputeFollow() {
   }
 }
 
-void Parser::ComputeFollowPassDFS() {
-  // A DFS pass to update the follow set
-
-  ProductionElementSet visited;
-
-  for (const auto& nt : non_terminals_) {
-    if (visited.find(nt) == visited.end()) {
-      ComputeFollowPassDFS(nt, &visited);
-    }
-  }
-}
-
-void Parser::ComputeFollowPassDFS(const ProductionElement& nt,
-                                  ProductionElementSet* const visited) {
-
-  std::stack<ProductionElement> s;
-
-  auto add_to_stack = [&](const ProductionElement& nt_pe) {
-    // if nt_pe is a terminal - return
-    if (nt_pe.type == ProductionElementType::TERMINAL) { return; }
-    // if already visited - return
-    if (visited->find(nt_pe) != visited->end()) { return; }
-
-    // All checks passed - Add to stack and mark visited
-    s.push(nt_pe);
-    visited->insert(nt_pe);
-  };
-
+void Parser::ComputeFollowPass() {
+  // for every non terminal in the production - keep adding the firsts
+  // of the following elements.
+  // if end is reached - add the follow of the left side of the terminal
   auto add_firsts_to_follow = [&](const ProductionElement& from_firsts_pe,
                                   const ProductionElement& to_follow_pe) {
     for (const auto& first_item: first_.at(from_firsts_pe)) {
@@ -295,41 +271,34 @@ void Parser::ComputeFollowPassDFS(const ProductionElement& nt,
     }
   };
 
-  // Intialize with start_symbol_
-  add_to_stack(nt);
+  for (const auto& nt_productions : productions_) {
+    const auto& productions{nt_productions.second};
+    for (const auto& p : productions) {
+      for (std::size_t p_i = 0; p_i < p.right.size(); ++p_i) {
+        const auto& pi_e{p.right.at(p_i)};
 
-  while (!s.empty()) {
-    auto pe{s.top()}; s.pop();
+        if (!pi_e.IsNonTerminal()) {
+          continue;
+        }
 
-    // visit all the productions that the pe is a part of to add children
-    for (const auto& nt_productions : productions_) {
-      const auto& productions{nt_productions.second};
-      for (const auto& p : productions) {
-        for (std::size_t p_i = 0; p_i < p.right.size(); ++p_i) {
-          if (p.right.at(p_i) != pe) { continue; }
-          /* If the current pe matches our node,
-           *  Add the existing follow set & first set and,
-           *  Add to dfs if not already visited
-           */
-          const bool is_last_element{p_i == p.right.size() - 1};
-          if (is_last_element) {
-            // Whatever follows the left side of the production also follows this PE
-            spdlog::debug("Adding follows of {} to {}", p.left.to_string(), pe.to_string());
-            add_follow_to_follow(p.left, pe);
-            add_to_stack(p.left);
-          } else {
-            const auto& next_pe{p.right.at(p_i + 1)};
-            // The firsts of the p_i + 1 element follows p_i element
-            spdlog::debug("Adding firsts of {} to {}", next_pe.to_string(), pe.to_string());
-            add_firsts_to_follow(next_pe, pe);
-            // If the next element can derive epsilon then whatever follows that follows this PE
-            if (first_.at(next_pe).find(kEmptyTerminal) != first_.at(next_pe).end()) {
-              add_follow_to_follow(next_pe, pe);
-              add_to_stack(next_pe);
-            }
+        std::size_t p_j = p_i + 1;
+        while (p_j < p.right.size()) {
+          // Add first of p_j to p_i
+          const auto& pj_e{p.right.at(p_j)};
+          add_firsts_to_follow(pj_e, pi_e);
+          if (!first_.at(pj_e).count(kEmptyTerminal)) {
+            // pj_e cannot be empty
+            break;
           }
-        } // production right side
-      } // productions of a specific NT
-    } // productions
-  } // dfs
+          p_j++;
+        }
+
+        if (p_j == p.right.size()) {
+          // p_j fell of the end of the production - This means whatever follows
+          // the left of the production follows p_i also
+          add_follow_to_follow(p.left, pi_e);
+        }
+      } // production right side iterator
+    } // productions iterator
+  } // production nt map iterator
 }

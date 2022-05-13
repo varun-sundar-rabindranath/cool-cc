@@ -66,9 +66,5 @@ class Parser {
 
     // return true if this production element can be empty ; false otherwise
     bool ComputeFirst(const ProductionElement& pe); // Fills the derived state
-    // A DFS pass on every non-terminal to update the follow set
-    void ComputeFollowPassDFS();
-    // A DFS pass on a specific non-terminal
-    void ComputeFollowPassDFS(const ProductionElement& nt,
-                              ProductionElementSet* const visited);
+    void ComputeFollowPass();
 };
