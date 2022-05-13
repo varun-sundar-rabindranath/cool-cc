@@ -1,0 +1,32 @@
+// Grammar
+// E -> a X Y b c
+// X -> x y
+// Y -> p q
+// Y -> epsilon
+
+TERMINALS:
+// ideally this should be what the lexer gives you. but lets comeback to that later
+%empty
+a
+b
+c
+x
+y
+p
+q
+
+NONTERMINALS:
+// The first non-terminal defined here is always the start symbol
+E
+X
+Y
+
+PRODUCTIONS:
+// Use %empty to define epsilon productions
+// There should be only one production for the start symbol
+// All the individual elements on the left side of the production should be
+// separated by whitespace
+E : a X Y b c
+X : x y
+Y : p q
+Y : %empty

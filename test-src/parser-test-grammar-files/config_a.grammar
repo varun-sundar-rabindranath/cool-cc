@@ -1,0 +1,20 @@
+// Grammar
+// E -> a b c
+
+TERMINALS:
+// ideally this should be what the lexer gives you. but lets comeback to that later
+%empty
+a
+b
+c
+
+NONTERMINALS:
+// The first non-terminal defined here is always the start symbol
+E
+
+PRODUCTIONS:
+// Use %empty to define epsilon productions
+// There should be only one production for the start symbol
+// All the individual elements on the left side of the production should be
+// separated by whitespace
+E : a b c

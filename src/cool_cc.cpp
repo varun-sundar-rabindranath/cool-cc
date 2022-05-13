@@ -3,24 +3,47 @@
 #include "spdlog/spdlog.h"
 
 #include "lexer/lexer.hpp"
+#include "parser/parser.hpp"
 
 struct CoolCCAppSettings {
   std::string filename;
+
+  // lexer command options
   std::string lexer_definition_file_name;
   bool lexer{false};
+
+  // parser command options
+  std::string grammar_definition_file_name;
+  bool parser{false};
 };
 
-int Run(const CoolCCAppSettings& settings) {
-  spdlog::info("Cool source file {}", settings.filename);
-  spdlog::info("Lexer definition filename ? {}", settings.lexer_definition_file_name);
-  spdlog::info("Lexer on ? {}", settings.lexer);
+int RunLexer(const std::string& filename,
+	     const std::string& lexer_definition_file_name) {
+  spdlog::info("Running Lexer...");
+  spdlog::info(" - COOL source file {}", filename);
+  spdlog::info(" - Lex definition file {}", lexer_definition_file_name);
 
-  Lexer lexer{settings.lexer_definition_file_name};
+  Lexer lexer{lexer_definition_file_name};
+  lexer.RunLexerOn(filename);
+  return 0;
+}
+
+int RunParser(const std::string& grammar_definition_file_name) {
+  spdlog::info("Running Parser ...");
+  spdlog::info(" - Grammar definition file {}", grammar_definition_file_name);
+
+  Parser parser{grammar_definition_file_name};
+  return 0;
+}
+
+int Run(const CoolCCAppSettings& settings) {
   if (settings.lexer) {
-    lexer.RunLexerOn(settings.filename);
+    RunLexer(settings.filename, settings.lexer_definition_file_name);
   }
 
-
+  if (settings.parser) {
+    RunParser(settings.grammar_definition_file_name);
+  }
 
   return 0;
 }
@@ -35,10 +58,20 @@ int main(int argc, char** argv) {
 
   CLI::App app{"cool-cc - A COOL compiler impl."};
   app.add_option("-f", settings.filename, "COOL source file");
+
+  // Make these into command groups
+  // Lexer command group
   app.add_option("--lexer-definition-filename",
                  settings.lexer_definition_file_name,
                  "File defining the tokens and the corresponding regex");
   app.add_flag("--lexer", settings.lexer, "Run the lexer");
+
+  // Parser command group
+  app.add_option("--grammar-definition-filename",
+                 settings.grammar_definition_file_name,
+                 "File defining the grammar - Terminals, Non Terminals & Productions");
+  app.add_flag("--parser", settings.parser, "Run the parser");
+
   CLI11_PARSE(app, argc, argv);
 
   return Run(settings);
