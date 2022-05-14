@@ -14,8 +14,10 @@ static constexpr char const kGrammarFileProductionLRSeparator[] = ":";
 static constexpr char const kGrammarFileEmptyTerminal[] = "%empty";
 
 /**
- * The function guarantees that the returned vectors of terminals_ and
- * non_terminals_ do not contain any duplicates
+ * The function guarantees that,
+ * 1. The returned vectors of terminals_ and non_terminals_ do not contain any
+ *    duplicates
+ * 2. The start_symbol has one and only one production
  */
 void ParseGrammarFile(const std::string& grammar_filename,
 		      ProductionElementVector* const terminals,

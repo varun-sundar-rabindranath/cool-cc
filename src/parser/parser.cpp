@@ -5,20 +5,43 @@
 #include <parser/parser.hpp>
 #include <parser/grammar_file_parser.hpp>
 #include <stack>
+#include <limits>
 #include <iostream>
 
+const ProductionElement Parser::kEndOfInputTerminal =
+                        ProductionElement{ProductionElementType::TERMINAL, "$"};
 const ProductionElement Parser::kEmptyTerminal =
                         ProductionElement{ProductionElementType::TERMINAL,
                                           kGrammarFileEmptyTerminal};
 
 Parser::Parser(const std::string& grammar_filename) :
-  grammar_filename_{grammar_filename} {
+  grammar_filename_{grammar_filename},
+  terminals_{},
+  non_terminals_{},
+  productions_{},
+  terminal_id_map_{},
+  non_terminal_id_map_{},
+  production_id_map_{},
+  first_{},
+  follow_{},
+  rd_parsing_table_{}{
 
   spdlog::debug("Parser({})", grammar_filename_);
 
   ParseGrammarFile(grammar_filename_, &terminals_,
                    &non_terminals_, &productions_,
                    &start_symbol_);
+
+  // Add End Of Input terminals to the terminals_ and start_symbol production
+  terminals_.push_back(kEndOfInputTerminal);
+  for (auto& p : productions_) {
+    if (p.left == start_symbol_) {
+      p.right.push_back(kEndOfInputTerminal);
+      // It is okay to break. ParseGrammarFile guarantees that the start_symbol_
+      // has only one production
+      break;
+    }
+  }
 
   // Update terminal -> id, non_terminal -> id, produciton -> id maps
   for (std::size_t id = 0; id < terminals_.size(); ++id) {
@@ -35,9 +58,15 @@ Parser::Parser(const std::string& grammar_filename) :
   }
 
   ComputeFirst();
-
   ComputeFollow();
 
+  DumpState();
+  DumpFirst();
+  DumpFollow();
+
+  ComputeParsingTable();
+
+  DumpParsingTable();
 }
 
 // setters
@@ -74,7 +103,7 @@ Parser::ProductionElementFollowSet Parser::GetFollows() const {
   return follow_;
 }
 
-void Parser::Dump() const {
+void Parser::DumpState() const {
 
   spdlog::debug("Grammar file - {}", grammar_filename_);
 
@@ -94,7 +123,9 @@ void Parser::Dump() const {
   }
 
   spdlog::debug("Start Symbol {} ", start_symbol_.to_string());
+}
 
+void Parser::DumpFirst() const {
   // dump firsts
   spdlog::debug("Firsts ...");
   for (const auto& pe_terminals : first_) {
@@ -103,7 +134,9 @@ void Parser::Dump() const {
       spdlog::debug(" - {}", t.to_string());
     }
   }
+}
 
+void Parser::DumpFollow() const {
   // dump follow
   spdlog::debug("Follow ...");
   for (const auto& pe_terminals : follow_) {
@@ -112,26 +145,86 @@ void Parser::Dump() const {
       spdlog::debug(" - {}", t.to_string());
     }
   }
+}
+
+void Parser::DumpParsingTable() const {
 
   // dump parsing table
-  if (rd_parsing_table_.empty()) { return; }
+  if (rd_parsing_table_.empty()) {
+    spdlog::debug("Parsing table is empty");
+    return;
+  }
+
   const std::size_t n_rows{rd_parsing_table_.size()};
   const std::size_t n_cols{rd_parsing_table_.at(0).size()};
-  // dump header row (terminals)
-  for (std::size_t c = 0; c < n_cols; ++c) {
-    spdlog::debug("\t{}", terminals_.at(c).to_string());
-  }
+
+  const std::size_t cell_pre_padding{2};
+  const std::size_t cell_post_padding{2};
+  std::size_t cell_width{0};
+  std::size_t cell_height{0};
   for (std::size_t r = 0; r < n_rows; ++r) {
-    spdlog::debug("{}", non_terminals_.at(r).to_string());
     for (std::size_t c = 0; c < n_cols; ++c) {
-      const auto p_id{rd_parsing_table_[r][c]};
-      if (p_id == kParserErrorEntry) {
-        spdlog::debug("\tErr");
-      } else {
-        spdlog::debug("\t{}", productions_.at(p_id).to_string());
+      cell_height = std::max(cell_height, rd_parsing_table_[r][c].size());
+      for (const auto p_id : rd_parsing_table_[r][c]) {
+        const std::size_t p_size{productions_[p_id].to_string().length()};
+        cell_width = std::max(cell_width, p_size);
       }
     }
   }
+
+  auto add_cell_text = [&](std::string* const dump_str,
+                           const std::string& cell_text) {
+    *dump_str += fmt::format("{:>{}}", cell_text, cell_pre_padding) +
+                 fmt::format("{:>{}}", "", (cell_width - cell_text.length()) + cell_post_padding);
+  };
+
+  auto add_cell_entry = [&](std::string* const dump_str, std::size_t entry_idx,
+                            int m, int n) {
+    if (rd_parsing_table_[m][n].size() <= entry_idx) {
+      // just cell_width + cell_padding spaces
+      add_cell_text(dump_str, entry_idx == 0 ? "Err" : "");
+      return;
+    }
+
+    const auto p_id = rd_parsing_table_[m][n][entry_idx];
+    const auto& entry = productions_[p_id];
+    add_cell_text(dump_str, entry.to_string());
+  };
+
+  // dump header row (terminals)
+  std::string header;
+  add_cell_text(&header, "");
+  for (std::size_t c = 0; c < n_cols; ++c) {
+    add_cell_text(&header, terminals_.at(c).element);
+  }
+  spdlog::debug("{}", header);
+  for (std::size_t r = 0; r < n_rows; ++r) {
+    std::string row_str;
+    for (std::size_t ch = 0; ch < cell_height; ++ch) {
+      if (ch == 0) {
+        add_cell_text(&row_str, non_terminals_.at(r).element);
+      } else {
+        add_cell_text(&row_str, "");
+      }
+
+      for (std::size_t c = 0; c < n_cols; ++c) {
+        add_cell_entry(&row_str, ch, r, c);
+      }
+    }
+
+    spdlog::debug("{}", row_str);
+  }
+}
+
+void Parser::Dump() const {
+
+  DumpState();
+
+  DumpFirst();
+
+  DumpFollow();
+
+  DumpParsingTable();
 }
 
 bool Parser::ComputeFirst(const ProductionElement& pe) {
@@ -331,7 +424,7 @@ void Parser::ComputeFollowPass() {
         p_j++;
       }
 
-      if (p_j == p.right.size()) {
+      if (p_j == p.right.size() && p.left != pi_e) {
         // p_j fell of the end of the production - This means whatever follows
         // the left of the production follows p_i also
         add_follow_to_follow(p.left, pi_e);
@@ -345,22 +438,26 @@ void Parser::ComputeParsingTable() {
   auto add_firsts_of_production_element = [&](const ProductionElement& x,
                                               ProductionElementSet* const pe_set) {
     assert (pe_set);
-    // Don't add the empty terminal - Maybe a terminal follows this NT
-    for (const auto& y : first_.at(x)) {
+    const auto& first_set{first_.at(x)};
+    for (const auto& y : first_set) {
       if (y == kEmptyTerminal) {
+        // Don't add the empty terminal - Maybe a terminal follows this NT
         continue;
       }
+      assert (y.IsTerminal());
       pe_set->insert(y);
     }
   };
 
-  // Initialize parsing tables with all error states
-  rd_parsing_table_.clear();
   const std::size_t n_terminals{terminals_.size()};
   const std::size_t n_non_terminals{non_terminals_.size()};
-  rd_parsing_table_ = std::vector<std::vector<std::size_t>>{
-                        n_non_terminals, std::vector<std::size_t>{
-                          n_terminals, kParserErrorEntry}};
+
+  // Initialize parsing table
+  rd_parsing_table_.clear();
+  rd_parsing_table_.resize(n_non_terminals);
+  for (auto& pt_row : rd_parsing_table_) {
+    pt_row.resize(n_terminals, {});
+  }
 
   /**
    * How to fill the parsing table ?
@@ -386,6 +483,7 @@ void Parser::ComputeParsingTable() {
     std::size_t r_i = 0;
     while (r_i < p.right.size()) {
       const auto& pe{p.right.at(r_i)};
+
       if (pe == kEmptyTerminal) { ++r_i; continue; }
 
       // Add firsts of pe to p_first
@@ -399,7 +497,7 @@ void Parser::ComputeParsingTable() {
       ++r_i;
     }
     // Can the production derive epsilon
-    const bool p_can_be_empty{r_i == p.right.size() + 1};
+    const bool p_can_be_empty{r_i == p.right.size()};
 
     const auto p_id{production_id_map_[p]};
     const auto nt_id{non_terminal_id_map_[p.left]};
@@ -408,7 +506,7 @@ void Parser::ComputeParsingTable() {
     for (const auto& p_first : p_firsts) {
       assert (p_first.IsTerminal());
       const auto t_id{terminal_id_map_[p_first]};
-      rd_parsing_table_[nt_id][t_id] = p_id;
+      rd_parsing_table_[nt_id][t_id].push_back(p_id);
     }
 
     // Add the production_id to all Follow[p.left] if p_can_be_empty
@@ -416,7 +514,7 @@ void Parser::ComputeParsingTable() {
       for (const auto& nt_follow : follow_[p.left]) {
         assert (nt_follow.IsTerminal());
         const auto t_id{terminal_id_map_[nt_follow]};
-        rd_parsing_table_[nt_id][t_id] = p_id;
+        rd_parsing_table_[nt_id][t_id].push_back(p_id);
       }
     }
   } // productions_

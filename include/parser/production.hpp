@@ -57,9 +57,9 @@ struct ProductionElement {
 
   std::string to_string() const {
     std::string s;
-    if (type == ProductionElementType::TERMINAL) { s += std::string(" TERMINAL - "); }
-    if (type == ProductionElementType::NON_TERMINAL) { s += std::string(" NON TERMINAL - "); }
-    if (type == ProductionElementType::INVALID) { s += std::string(" INVALID PE - "); }
+    if (type == ProductionElementType::TERMINAL) { s = " TERMINAL - "; }
+    if (type == ProductionElementType::NON_TERMINAL) { s = " NON TERMINAL - "; }
+    if (type == ProductionElementType::INVALID) { s = " INVALID PE - "; }
     s += element + " ";
     return s;
   }

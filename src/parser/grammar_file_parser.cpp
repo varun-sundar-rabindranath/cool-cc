@@ -1,4 +1,5 @@
 #include <parser/grammar_file_parser.hpp>
+#include <stdexcept>
 #include <utils/string_utils.hpp>
 #include <utils/file_utils.hpp>
 #include <sstream>
@@ -212,6 +213,17 @@ void ParseGrammarFile(const std::string& grammar_filename,
 
       productions->push_back(Production{left_side, right_side});
     }
+  }
+
+  // Check that the start_symbol has one and only one production
+  std::size_t n_start_symbol_productions = 0;
+  for (const auto& p : *productions) {
+    if (p.left == *start_symbol) { n_start_symbol_productions++; }
+  }
+  if (n_start_symbol_productions != 1) {
+    throw std::invalid_argument(
+	    fmt::format("Start Symbol can have only one production. But found {} productions",
+			n_start_symbol_productions));
   }
 }
 

@@ -11,10 +11,8 @@
 // Parser base class
 class Parser {
 
-  private:
-    static const std::size_t kParserErrorEntry = -1;
-
   public:
+    static const ProductionElement kEndOfInputTerminal; // this is the $ in dragon boo
     static const ProductionElement kEmptyTerminal;
 
     using ProductionElementFirstSet =
@@ -26,10 +24,15 @@ class Parser {
     using ProductionIDMap =
         std::unordered_map<Production, std::size_t, production_hash>;
 
-    // Recursive Descent Parsing Table
-    // RD parsing table is one where the rows are for non-terminals,
-    // the columns are for terminals and the entries are for the productions
-    using RDParsingTable = std::vector<std::vector<std::size_t>>;
+    /**
+     * Recursive Descent Parsing Table
+     * RD parsing table is one where the rows are for non-terminals,
+     * the columns are for terminals and the entries are for the productions
+     * Note that if there are multiple entries for a {non-terminal, terminal}
+     * pair, then it means that the grammar is ambiguous
+     */
+    using RDParsingTableEntry = std::vector<std::size_t>;
+    using RDParsingTable = std::vector<std::vector<RDParsingTableEntry>>;
 
   public:
     Parser(const std::string& grammar_filename);
@@ -48,15 +51,18 @@ class Parser {
 
     // debug functions
     void Dump() const;
+    void DumpState() const;
+    void DumpFirst() const;
+    void DumpFollow() const;
+    void DumpParsingTable() const;
 
   private:
     // Actual State
+    std::string grammar_filename_;
     ProductionElementVector terminals_;
     ProductionElementVector non_terminals_;
     ProductionVector productions_;
     ProductionElement start_symbol_;
-
-    std::string grammar_filename_;
 
     // Derived State
     /* ID mapping is only required for easy manipulation in algorithms
