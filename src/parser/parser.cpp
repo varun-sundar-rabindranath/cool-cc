@@ -19,6 +19,7 @@ Parser::Parser(const std::string& grammar_filename) :
   ParseGrammarFile(grammar_filename_, &terminals_,
                    &non_terminals_, &productions_,
                    &start_symbol_);
+
   // Update terminal -> id, non_terminal -> id, produciton -> id maps
   for (std::size_t id = 0; id < terminals_.size(); ++id) {
     assert (terminal_id_map_.find(terminals_.at(id)) == terminal_id_map_.end());
@@ -33,45 +34,10 @@ Parser::Parser(const std::string& grammar_filename) :
     production_id_map_.insert({productions_.at(id), id});
   }
 
-  // print the grammar
-  spdlog::debug("Terminals ...");
-  for (const auto& t : terminals_) {
-    spdlog::debug("{}", t.to_string());
-  }
-
-  spdlog::debug("Non Terminals ...");
-  for (const auto& nt : non_terminals_) {
-    spdlog::debug("{}", nt.to_string());
-  }
-
-  spdlog::debug("Productions ...");
-  for (const auto&p : productions_) {
-    spdlog::debug("{}", p.to_string());
-  }
-
-  spdlog::debug("Start Symbol {} ", start_symbol_.to_string());
-
   ComputeFirst();
-
-  // dump firsts
-  spdlog::debug("Firsts ...");
-  for (const auto& pe_terminals : first_) {
-    spdlog::debug("Firsts of {} is ", pe_terminals.first.to_string());
-    for (const auto& t : pe_terminals.second) {
-      spdlog::debug(" - {}", t.to_string());
-    }
-  }
 
   ComputeFollow();
 
-  // dump follow
-  spdlog::debug("Follow ...");
-  for (const auto& pe_terminals : follow_) {
-    spdlog::debug("Follows of {} is ", pe_terminals.first.to_string());
-    for (const auto& t : pe_terminals.second) {
-      spdlog::debug(" - {}", t.to_string());
-    }
-  }
 }
 
 // setters
@@ -106,6 +72,66 @@ Parser::ProductionElementFirstSet Parser::GetFirsts() const {
 
 Parser::ProductionElementFollowSet Parser::GetFollows() const {
   return follow_;
+}
+
+void Parser::Dump() const {
+
+  spdlog::debug("Grammar file - {}", grammar_filename_);
+
+  spdlog::debug("Terminals ...");
+  for (const auto& t : terminals_) {
+    spdlog::debug("{}", t.to_string());
+  }
+
+  spdlog::debug("Non Terminals ...");
+  for (const auto& nt : non_terminals_) {
+    spdlog::debug("{}", nt.to_string());
+  }
+
+  spdlog::debug("Productions ...");
+  for (const auto&p : productions_) {
+    spdlog::debug("{}", p.to_string());
+  }
+
+  spdlog::debug("Start Symbol {} ", start_symbol_.to_string());
+
+  // dump firsts
+  spdlog::debug("Firsts ...");
+  for (const auto& pe_terminals : first_) {
+    spdlog::debug("Firsts of {} is ", pe_terminals.first.to_string());
+    for (const auto& t : pe_terminals.second) {
+      spdlog::debug(" - {}", t.to_string());
+    }
+  }
+
+  // dump follow
+  spdlog::debug("Follow ...");
+  for (const auto& pe_terminals : follow_) {
+    spdlog::debug("Follows of {} is ", pe_terminals.first.to_string());
+    for (const auto& t : pe_terminals.second) {
+      spdlog::debug(" - {}", t.to_string());
+    }
+  }
+
+  // dump parsing table
+  if (rd_parsing_table_.empty()) { return; }
+  const std::size_t n_rows{rd_parsing_table_.size()};
+  const std::size_t n_cols{rd_parsing_table_.at(0).size()};
+  // dump header row (terminals)
+  for (std::size_t c = 0; c < n_cols; ++c) {
+    spdlog::debug("\t{}", terminals_.at(c).to_string());
+  }
+  for (std::size_t r = 0; r < n_rows; ++r) {
+    spdlog::debug("{}", non_terminals_.at(r).to_string());
+    for (std::size_t c = 0; c < n_cols; ++c) {
+      const auto p_id{rd_parsing_table_[r][c]};
+      if (p_id == kParserErrorEntry) {
+        spdlog::debug("\tErr");
+      } else {
+        spdlog::debug("\t{}", productions_.at(p_id).to_string());
+      }
+    }
+  }
 }
 
 bool Parser::ComputeFirst(const ProductionElement& pe) {

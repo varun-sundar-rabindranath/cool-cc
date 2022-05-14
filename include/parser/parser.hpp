@@ -46,6 +46,9 @@ class Parser {
     ProductionElementFirstSet GetFirsts() const;
     ProductionElementFollowSet GetFollows() const;
 
+    // debug functions
+    void Dump() const;
+
   private:
     // Actual State
     ProductionElementVector terminals_;
