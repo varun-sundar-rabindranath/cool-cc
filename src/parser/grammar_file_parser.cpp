@@ -57,9 +57,9 @@ static void ParseProduction(const std::string& line,
 }
 
 void ParseGrammarFile(const std::string& grammar_filename,
-		      ProductionElementSet* const terminals,
-		      ProductionElementSet* const non_terminals,
-		      ProductionElement_Production_Map* const productions,
+		      ProductionElementVector* const terminals,
+		      ProductionElementVector* const non_terminals,
+		      ProductionVector* const productions,
 		      ProductionElement* const start_symbol) {
   assert (terminals);
   assert (non_terminals);
@@ -70,6 +70,11 @@ void ParseGrammarFile(const std::string& grammar_filename,
   terminals->clear();
   non_terminals->clear();
   productions->clear();
+
+  // create a set for terminals and non-terminals; The find() function is used
+  // very frequently in this function.
+  ProductionElementSet terminals_set;
+  ProductionElementSet non_terminals_set;
 
   // helpers
   auto IsGrammarDefComment = [&](const std::string& line) -> bool {
@@ -142,21 +147,23 @@ void ParseGrammarFile(const std::string& grammar_filename,
     if (is_terminals_section) {
       assert (!is_non_terminals_section && !is_production_section);
       auto t{ParseTerminal(trimmed)};
-      if (non_terminals->find(t) != non_terminals->end()) {
+      if (non_terminals_set.find(t) != non_terminals_set.end()) {
         throw std::runtime_error(
                 fmt::format("{} is already registered as a Non Terminal", trimmed));
       }
-      terminals->insert(t);
+      terminals_set.insert(t);
+      terminals->push_back(t);
     }
 
     if (is_non_terminals_section) {
       assert (!is_terminals_section && !is_production_section);
       auto nt{ParseNonTerminal(trimmed)};
-      if (terminals->find(nt) != terminals->end()) {
+      if (terminals_set.find(nt) != terminals_set.end()) {
         throw std::runtime_error(
                 fmt::format("{} is already registered as a Terminal", trimmed));
       }
-      non_terminals->insert(nt);
+      non_terminals_set.insert(nt);
+      non_terminals->push_back(nt);
       if (is_start_symbol) { *start_symbol = nt; is_start_symbol = false; }
     }
 
@@ -170,7 +177,7 @@ void ParseGrammarFile(const std::string& grammar_filename,
       // Make left side of the production
       const ProductionElement left_side{ProductionElementType::NON_TERMINAL, left_token};
       // left token must be a non-terminal
-      if (non_terminals->find(left_side) == non_terminals->end()) {
+      if (non_terminals_set.find(left_side) == non_terminals_set.end()) {
         throw std::runtime_error(
                     fmt::format("{} : Left side of the production is not a Non Terminal", left_token));
       }
@@ -190,11 +197,11 @@ void ParseGrammarFile(const std::string& grammar_filename,
         // right side tokens can be either terminals or non-terminals
         const ProductionElement r_token_t{ProductionElementType::TERMINAL, r_token};
         const ProductionElement r_token_nt{ProductionElementType::NON_TERMINAL, r_token};
-        if (terminals->find(r_token_t) != terminals->end()) {
+        if (terminals_set.find(r_token_t) != terminals_set.end()) {
           right_side.push_back(r_token_t);
           continue;
         }
-        if (non_terminals->find(r_token_nt) != non_terminals->end()) {
+        if (non_terminals_set.find(r_token_nt) != non_terminals_set.end()) {
           right_side.push_back(r_token_nt);
           continue;
         }
@@ -203,10 +210,7 @@ void ParseGrammarFile(const std::string& grammar_filename,
                             trimmed, r_token));
       }
 
-      if (productions->find(left_side) == productions->end()) {
-        productions->insert({left_side, {}});
-      }
-      productions->at(left_side).push_back(Production{left_side, right_side});
+      productions->push_back(Production{left_side, right_side});
     }
   }
 }

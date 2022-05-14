@@ -32,10 +32,8 @@ Parser::Parser(const std::string& grammar_filename) :
   }
 
   spdlog::debug("Productions ...");
-  for (const auto& pe_ps : productions_) {
-    for (const auto& p : pe_ps.second) {
-      spdlog::debug("{}", p.to_string());
-    }
+  for (const auto&p : productions_) {
+    spdlog::debug("{}", p.to_string());
   }
 
   spdlog::debug("Start Symbol {} ", start_symbol_.to_string());
@@ -64,28 +62,28 @@ Parser::Parser(const std::string& grammar_filename) :
 }
 
 // setters
-void Parser::SetTerminals(const ProductionElementSet& terminals) {
+void Parser::SetTerminals(const ProductionElementVector& terminals) {
   terminals_ = terminals;
 }
 
-void Parser::SetNonTerminals(const ProductionElementSet& non_terminals) {
+void Parser::SetNonTerminals(const ProductionElementVector& non_terminals) {
   non_terminals_ = non_terminals;
 }
 
-void Parser::SetProductions(const ProductionElement_Production_Map& productions) {
+void Parser::SetProductions(const ProductionVector& productions) {
   productions_ = productions;
 }
 
 // getters
-ProductionElementSet Parser::GetTerminals() const {
+ProductionElementVector Parser::GetTerminals() const {
   return terminals_;
 }
 
-ProductionElementSet Parser::GetNonTerminals() const {
+ProductionElementVector Parser::GetNonTerminals() const {
   return non_terminals_;
 }
 
-ProductionElement_Production_Map Parser::GetProductions() const {
+ProductionVector Parser::GetProductions() const {
   return productions_;
 }
 
@@ -121,7 +119,10 @@ bool Parser::ComputeFirst(const ProductionElement& pe) {
 
   bool pe_can_be_empty{false};
 
-  for (const auto& p : productions_[pe]) {
+  for (const auto& p : productions_) {
+    // TODO very inefficient - do something
+    if (p.left != pe) { continue; }
+
     bool pi_empty{true}; // initialized to true to handle the empty production case
     for (std::size_t p_i = 0; p_i < p.right.size(); ++p_i) {
 
@@ -271,34 +272,31 @@ void Parser::ComputeFollowPass() {
     }
   };
 
-  for (const auto& nt_productions : productions_) {
-    const auto& productions{nt_productions.second};
-    for (const auto& p : productions) {
-      for (std::size_t p_i = 0; p_i < p.right.size(); ++p_i) {
-        const auto& pi_e{p.right.at(p_i)};
+  for (const auto& p : productions_) {
+    for (std::size_t p_i = 0; p_i < p.right.size(); ++p_i) {
+      const auto& pi_e{p.right.at(p_i)};
 
-        if (!pi_e.IsNonTerminal()) {
-          continue;
-        }
+      if (!pi_e.IsNonTerminal()) {
+        continue;
+      }
 
-        std::size_t p_j = p_i + 1;
-        while (p_j < p.right.size()) {
-          // Add first of p_j to p_i
-          const auto& pj_e{p.right.at(p_j)};
-          add_firsts_to_follow(pj_e, pi_e);
-          if (!first_.at(pj_e).count(kEmptyTerminal)) {
-            // pj_e cannot be empty
-            break;
-          }
-          p_j++;
+      std::size_t p_j = p_i + 1;
+      while (p_j < p.right.size()) {
+        // Add first of p_j to p_i
+        const auto& pj_e{p.right.at(p_j)};
+        add_firsts_to_follow(pj_e, pi_e);
+        if (!first_.at(pj_e).count(kEmptyTerminal)) {
+          // pj_e cannot be empty
+          break;
         }
+        p_j++;
+      }
 
-        if (p_j == p.right.size()) {
-          // p_j fell of the end of the production - This means whatever follows
-          // the left of the production follows p_i also
-          add_follow_to_follow(p.left, pi_e);
-        }
-      } // production right side iterator
-    } // productions iterator
-  } // production nt map iterator
+      if (p_j == p.right.size()) {
+        // p_j fell of the end of the production - This means whatever follows
+        // the left of the production follows p_i also
+        add_follow_to_follow(p.left, pi_e);
+      }
+    } // production right side iterator
+  } // productions iterator
 }

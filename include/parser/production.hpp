@@ -10,11 +10,14 @@
 struct ProductionElement;
 struct production_element_hash;
 struct Production;
+struct production_hash;
 
 using ProductionElementSet =
   std::unordered_set<ProductionElement, production_element_hash>;
 using ProductionElement_Production_Map =
   std::unordered_map<ProductionElement, std::vector<Production>, production_element_hash>;
+using ProductionElementVector = std::vector<ProductionElement>;
+using ProductionVector = std::vector<Production>;
 
 enum ProductionElementType {
   TERMINAL = 0,
@@ -106,4 +109,11 @@ struct Production {
       }
       return s;
     }
+};
+
+// Hash function for Production
+struct production_hash {
+  std::size_t operator()(const Production& p) const {
+    return std::hash<std::string>{}(p.to_string());
+  }
 };
