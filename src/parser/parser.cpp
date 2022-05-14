@@ -313,3 +313,85 @@ void Parser::ComputeFollowPass() {
     } // production right side iterator
   } // productions iterator
 }
+
+void Parser::ComputeParsingTable() {
+
+  auto add_firsts_of_production_element = [&](const ProductionElement& x,
+                                              ProductionElementSet* const pe_set) {
+    assert (pe_set);
+    // Don't add the empty terminal - Maybe a terminal follows this NT
+    for (const auto& y : first_.at(x)) {
+      if (y == kEmptyTerminal) {
+        continue;
+      }
+      pe_set->insert(y);
+    }
+  };
+
+  // Initialize parsing tables with all error states
+  rd_parsing_table_.clear();
+  const std::size_t n_terminals{terminals_.size()};
+  const std::size_t n_non_terminals{non_terminals_.size()};
+  rd_parsing_table_ = std::vector<std::vector<std::size_t>>{
+                        n_non_terminals, std::vector<std::size_t>{
+                          n_terminals, kParserErrorEntry}};
+
+  /**
+   * How to fill the parsing table ?
+   *  - Note that the entry is actually the production id
+   *  - For each production,
+   *   - Add the production to all the First(production)
+   *     First(production) is calculated by the union of the right side of the
+   *     production. keep doing the union until you find a right side element
+   *     that cannot derive epsilon
+   *   - If the production can derive epsilon add the production to all the
+   *     Follow (production->left)
+   */
+
+  for (const auto& p : productions_) {
+    /**
+     * Need 2 pieces of information
+     *  - The First set of the production
+     *  - Can the production drive epsilon
+     */
+
+    // The First set of the production
+    ProductionElementSet p_firsts;
+    std::size_t r_i = 0;
+    while (r_i < p.right.size()) {
+      const auto& pe{p.right.at(r_i)};
+      if (pe == kEmptyTerminal) { ++r_i; continue; }
+
+      // Add firsts of pe to p_first
+      add_firsts_of_production_element(pe, &p_firsts);
+
+      if (first_[pe].find(kEmptyTerminal) == first_[pe].end()) {
+        // pe cannot derive epsilon
+        break;
+      }
+
+      ++r_i;
+    }
+    // Can the production derive epsilon
+    const bool p_can_be_empty{r_i == p.right.size() + 1};
+
+    const auto p_id{production_id_map_[p]};
+    const auto nt_id{non_terminal_id_map_[p.left]};
+
+    // Add the production_id to all rd_parsing_table[p.left][first_set_element]
+    for (const auto& p_first : p_firsts) {
+      assert (p_first.IsTerminal());
+      const auto t_id{terminal_id_map_[p_first]};
+      rd_parsing_table_[nt_id][t_id] = p_id;
+    }
+
+    // Add the production_id to all Follow[p.left] if p_can_be_empty
+    if (p_can_be_empty) {
+      for (const auto& nt_follow : follow_[p.left]) {
+        assert (nt_follow.IsTerminal());
+        const auto t_id{terminal_id_map_[nt_follow]};
+        rd_parsing_table_[nt_id][t_id] = p_id;
+      }
+    }
+  } // productions_
+}

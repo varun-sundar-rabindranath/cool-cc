@@ -11,8 +11,12 @@
 // Parser base class
 class Parser {
 
+  private:
+    static const std::size_t kParserErrorEntry = -1;
+
   public:
     static const ProductionElement kEmptyTerminal;
+
     using ProductionElementFirstSet =
         std::unordered_map<ProductionElement, ProductionElementSet, production_element_hash>;
     using ProductionElementFollowSet = ProductionElementFirstSet;
@@ -22,10 +26,10 @@ class Parser {
     using ProductionIDMap =
         std::unordered_map<Production, std::size_t, production_hash>;
 
-    using ProductionElementVector = std::vector<ProductionElement>;
-    using TerminalVector = ProductionElementVector;
-    using NonTerminalVector = ProductionElementVector;
-    using ProductionVector = std::vector<Production>;
+    // Recursive Descent Parsing Table
+    // RD parsing table is one where the rows are for non-terminals,
+    // the columns are for terminals and the entries are for the productions
+    using RDParsingTable = std::vector<std::vector<std::size_t>>;
 
   public:
     Parser(const std::string& grammar_filename);
@@ -79,11 +83,16 @@ class Parser {
      */
     ProductionElementFollowSet follow_;
 
+    /* Recursive Descent Parsing Table */
+    RDParsingTable rd_parsing_table_;
+
   private:
     void ComputeFirst(); // Fills the derived state
     void ComputeFollow(); // Fills the derived state
+    void ComputeParsingTable(); // Fills the derived state
 
     // return true if this production element can be empty ; false otherwise
     bool ComputeFirst(const ProductionElement& pe); // Fills the derived state
     void ComputeFollowPass();
+
 };
