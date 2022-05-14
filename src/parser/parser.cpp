@@ -19,6 +19,19 @@ Parser::Parser(const std::string& grammar_filename) :
   ParseGrammarFile(grammar_filename_, &terminals_,
                    &non_terminals_, &productions_,
                    &start_symbol_);
+  // Update terminal -> id, non_terminal -> id, produciton -> id maps
+  for (std::size_t id = 0; id < terminals_.size(); ++id) {
+    assert (terminal_id_map_.find(terminals_.at(id)) == terminal_id_map_.end());
+    terminal_id_map_.insert({terminals_.at(id), id});
+  }
+  for (std::size_t id = 0; id < non_terminals_.size(); ++id) {
+    assert (non_terminal_id_map_.find(non_terminals_.at(id)) == non_terminal_id_map_.end());
+    non_terminal_id_map_.insert({non_terminals_.at(id), id});
+  }
+  for (std::size_t id = 0; id < productions_.size(); ++id) {
+    assert (production_id_map_.find(productions_.at(id)) == production_id_map_.end());
+    production_id_map_.insert({productions_.at(id), id});
+  }
 
   // print the grammar
   spdlog::debug("Terminals ...");

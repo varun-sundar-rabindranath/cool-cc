@@ -93,6 +93,19 @@ struct Production {
       return right.empty();
     }
 
+    bool operator==(const Production& other) const {
+      if (left != other.left) { return false; }
+      if (right.size() != other.right.size()) { return false; }
+      for (std::size_t i = 0; i < right.size(); ++i) {
+        if (right.at(i) != other.right.at(i)) { return false; }
+      }
+      return true;
+    }
+
+    bool operator!= (const Production& other) const {
+      return !(*this == other);
+    }
+
     std::ostream& operator<<(std::ostream& stream) const {
       stream << to_string();
       return stream;

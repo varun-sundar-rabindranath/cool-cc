@@ -22,10 +22,6 @@ class Parser {
     using ProductionIDMap =
         std::unordered_map<Production, std::size_t, production_hash>;
 
-    using IDProductionElementMap =
-        std::unordered_map<std::size_t, ProductionElement>;
-    using IDProductionMap = std::unordered_map<std::size_t, Production>;
-
     using ProductionElementVector = std::vector<ProductionElement>;
     using TerminalVector = ProductionElementVector;
     using NonTerminalVector = ProductionElementVector;
@@ -55,7 +51,7 @@ class Parser {
 
     std::string grammar_filename_;
 
-    // Actual State
+    // Derived State
     /* ID mapping is only required for easy manipulation in algorithms
      * and datastructures.
      * The ID always starts from zero.
@@ -63,10 +59,6 @@ class Parser {
     ProductionElementIDMap terminal_id_map_;
     ProductionElementIDMap non_terminal_id_map_;
     ProductionIDMap production_id_map_;
-    /* ID to ProductionElement / Production reverse mapping */
-    IDProductionElementMap id_terminal_map_;
-    IDProductionElementMap id_non_terminal_map_;
-    IDProductionMap id_production_map_;
 
     // Derived State
     /* Hashmap with a Production Element as Key (can be both terminal and non-
@@ -88,16 +80,6 @@ class Parser {
     ProductionElementFollowSet follow_;
 
   private:
-
-    // ID mapping utils
-    std::size_t ProductionElementID(const ProductionElement& pe) const;
-    std::size_t TerminalID(const ProductionElement& pe) const;
-    std::size_t NonTerminalID(const ProductionElement& pe) const;
-    std::size_t ProductionID(const Production& pe) const;
-    ProductionElement TerminalID(const std::size_t id) const;
-    ProductionElement NonTerminalID(const std::size_t id) const;
-    Production ProductionID(const std::size_t id) const;
-
     void ComputeFirst(); // Fills the derived state
     void ComputeFollow(); // Fills the derived state
 
