@@ -103,6 +103,17 @@ Parser::ProductionElementFollowSet Parser::GetFollows() const {
   return follow_;
 }
 
+std::vector<Production> Parser::GetParsingTableProductions(
+      const ProductionElement& nt, const ProductionElement& t) const {
+  const std::size_t nt_idx{non_terminal_id_map_.at(nt)};
+  const std::size_t t_idx{terminal_id_map_.at(t)};
+  std::vector<Production> productions;
+  for (const auto& p_idx : rd_parsing_table_[nt_idx][t_idx]) {
+    productions.push_back(productions_.at(p_idx));
+  }
+  return productions;
+}
+
 void Parser::DumpState() const {
 
   spdlog::debug("Grammar file - {}", grammar_filename_);

@@ -1,0 +1,42 @@
+// This is a comment
+
+TERMINALS:
+// ideally this should be what the lexer gives you. but lets comeback to that later
+%empty
+(
+)
+id
+*
++
+
+NONTERMINALS:
+// The first non-terminal defined here is always the start symbol
+S
+E
+E_DASH
+T
+T_DASH
+F
+
+PRODUCTIONS:
+// Use %empty to define epsilon productions
+// There should be only one production for the start symbol
+// All the individual elements on the left side of the production should be
+// separated by whitespace
+S : E
+
+E : T E_DASH
+
+E_DASH : + T E_DASH
+
+E_DASH : %empty
+
+T : F T_DASH
+
+T_DASH : * F T_DASH
+
+T_DASH : %empty
+
+F : ( E )
+
+F : id

@@ -65,13 +65,16 @@ parser_test: parser ${TEST_DIR}/parser_test.cpp
 	${CPP} ${CPP_FLAGS} -o ${BUILD_DIR}/parser_test ./test/parser_test.cpp -l errhandler -l lexer -l parser -l utils ${LD_FLAGS} 
 
 run_parser_test: parser_test
-	LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./build/ ./build/parser_test --test-compute-first --test-compute-follow
+	LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./build/ ./build/parser_test --test-compute-first --test-compute-follow --test-compute-parsing-table
 
 run_parser_compute_first_test: parser_test
 	LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./build/ ./build/parser_test --test-compute-first
 
 run_parser_compute_follow_test: parser_test
 	LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./build/ ./build/parser_test --test-compute-follow
+
+run_parser_compute_parsing_table_test: parser_test
+	LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./build/ ./build/parser_test --test-compute-parsing-table
 
 %.o: %.cpp
 	${CPP} ${CPP_FLAGS} -fPIC -c -o $@ $^ ${LD_FLAGS}

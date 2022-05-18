@@ -48,6 +48,8 @@ class Parser {
     ProductionVector GetProductions() const;
     ProductionElementFirstSet GetFirsts() const;
     ProductionElementFollowSet GetFollows() const;
+    std::vector<Production> GetParsingTableProductions(
+      const ProductionElement& nt, const ProductionElement& t) const;
 
     // debug functions
     void Dump() const;

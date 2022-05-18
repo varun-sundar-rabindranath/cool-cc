@@ -15,6 +15,22 @@ static ProductionElement MakePENonTerminal(const std::string& nt) {
   return ProductionElement{ProductionElementType::NON_TERMINAL, nt};
 }
 
+static Production MakeProduction(const std::string& left_str,
+				 const std::vector<std::string>& right_strs,
+				 const std::vector<bool>& is_right_terminal)  {
+  assert (right_strs.size() == is_right_terminal.size());
+
+  const ProductionElement left{MakePENonTerminal(left_str)};
+
+  const std::size_t n_right{right_strs.size()};
+  std::vector<ProductionElement> right;
+  for (std::size_t i = 0; i < n_right; ++i) {
+    right.push_back(is_right_terminal.at(i) ? MakePETerminal(right_strs.at(i)) : MakePENonTerminal(right_strs.at(i)));
+  }
+
+  return Production{left, right};
+}
+
 static const std::vector<std::string> kParserTestFiles {
   /**
    * E -> abc
@@ -202,9 +218,55 @@ static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFollow
     }
   };
 
+struct ParsingTableEntry {
+
+  ParsingTableEntry(const std::string& nt_str,
+		    const std::string& t_str,
+		    const Production& production_) :
+    non_terminal{MakePENonTerminal(nt_str)},
+    terminal{MakePETerminal(t_str)},
+    production{production_}
+  {
+  }
+
+  ProductionElement non_terminal;
+  ProductionElement terminal;
+  Production production;
+};
+
+static const std::vector<std::string> kParserParsingTableTestFiles {
+  /**
+   * arithmetic operations with + and * with precedence enforced
+   */
+  "./test-src/parser-test-grammar-files/arith.grammar"
+};
+
+using kParsingTableEntries = std::vector<ParsingTableEntry>;
+
+static const std::vector<kParsingTableEntries> kParsingTableExpected {
+  {
+    {"S", "id", MakeProduction("S", {"E", "$"}, {0, 1})},
+    {"S", "(", MakeProduction("S", {"E", "$"}, {0, 1})},
+    {"E", "id", MakeProduction("E", {"T", "E_DASH"}, {0, 0})},
+    {"E", "(", MakeProduction("E", {"T", "E_DASH"}, {0, 0})},
+    {"E_DASH", "+", MakeProduction("E_DASH", {"+", "T", "E_DASH"}, {1, 0, 0})},
+    {"E_DASH", ")", MakeProduction("E_DASH", {Parser::kEmptyTerminal.element}, {1})},
+    {"E_DASH", "$", MakeProduction("E_DASH", {Parser::kEmptyTerminal.element}, {1})},
+    {"T", "id", MakeProduction("T", {"F", "T_DASH"}, {0, 0})},
+    {"T", "(", MakeProduction("T", {"F", "T_DASH"}, {0, 0})},
+    {"T_DASH", "+", MakeProduction("T_DASH", {Parser::kEmptyTerminal.element}, {1})},
+    {"T_DASH", ")", MakeProduction("T_DASH", {Parser::kEmptyTerminal.element}, {1})},
+    {"T_DASH", "$", MakeProduction("T_DASH", {Parser::kEmptyTerminal.element}, {1})},
+    {"T_DASH", "*", MakeProduction("T_DASH", {"*", "F", "T_DASH"}, {1, 0, 0})},
+    {"F", "id", MakeProduction("F", {"id"}, {1})},
+    {"F", "(", MakeProduction("F", {"(", "E", ")"}, {1, 0, 1})}
+  }
+};
+
 struct ParserTestSettings {
   bool test_compute_first{false};
   bool test_compute_follow{false};
+  bool test_compute_parsing_table{false};
 };
 
 class ParserTest {
@@ -221,24 +283,36 @@ class ParserTest {
 	TestComputeFollow();
       }
 
+      if (settings_.test_compute_parsing_table) {
+	TestComputeParsingTable();
+      }
+
       return true;
     }
 
   private:
     void TestComputeFirst() const;
     void TestComputeFollow() const;
+    void TestComputeParsingTable() const;
 
   private:
     // utilities
     bool CompareProductionElementSets(const ProductionElementSet& a,
 				      const ProductionElementSet& b) const;
 
+    // TODO: Please use templates instead
     bool CompareProductionElementFirstSets(
       const Parser::ProductionElementFirstSet& a,
       const Parser::ProductionElementFirstSet& b) const;
     bool CompareProductionElementFollowSets(
       const Parser::ProductionElementFollowSet& a,
       const Parser::ProductionElementFollowSet& b) const;
+    bool CompareProductionVectors(
+      const ProductionVector& a,
+      const ProductionVector& b) const;
+    bool IsParsingTableMatch(
+      const Parser& p,
+      const kParsingTableEntries& expected) const;
 
   private:
     ParserTestSettings settings_;
@@ -302,6 +376,64 @@ bool ParserTest::CompareProductionElementFollowSets(
   return true;
 }
 
+bool ParserTest::CompareProductionVectors(
+  const ProductionVector& a,
+  const ProductionVector& b) const {
+
+  // Convert vector into sets for easy comparison
+  const std::unordered_set<Production, production_hash> a_set(a.begin(), a.end());
+  const std::unordered_set<Production, production_hash> b_set{b.begin(), b.end()};
+
+  if (a_set.size() != b_set.size()) {
+    return false;
+  }
+
+  for (const auto& a_item : a_set) {
+    if (b_set.find(a_item) == b_set.end()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool ParserTest::IsParsingTableMatch(const Parser& p,
+				     const kParsingTableEntries& expected) const {
+  const auto& terminals{p.GetTerminals()};
+  const auto& non_terminals{p.GetNonTerminals()};
+
+  auto get_expected_productions = 
+    [&](const ProductionElement& nt, const ProductionElement& t) -> ProductionVector {
+      ProductionVector expected_ps;
+      for (const auto& pt_entry : expected) {
+	if (pt_entry.non_terminal == nt && pt_entry.terminal == t) {
+	  expected_ps.push_back(pt_entry.production);
+	}
+      }
+      return expected_ps;
+  };
+
+  for (const auto& nt : non_terminals) {
+    for (const auto& t : terminals) {
+      const auto& actual_productions{p.GetParsingTableProductions(nt, t)};
+      const auto& expected_productions{get_expected_productions(nt, t)};
+      if (!CompareProductionVectors(actual_productions, expected_productions)) {
+        spdlog::error("Comparing parser entry at {}, {}", nt.to_string(), t.to_string());
+        spdlog::error("actual productions ");
+        for (const auto& p : actual_productions) {
+          spdlog::error("{}", p.to_string());
+        }
+        spdlog::error("expected productions ");
+        for (const auto& p : expected_productions) {
+          spdlog::error("{}", p.to_string());
+        }
+	return false;
+      }
+    }
+  }
+  return true;
+}
+
 // Actual tests
 
 void ParserTest::TestComputeFirst() const {
@@ -348,6 +480,26 @@ void ParserTest::TestComputeFollow() const {
 	       pass_count, kParserTestFiles.size());
 }
 
+void ParserTest::TestComputeParsingTable() const {
+
+  int pass_count = 0;
+  for (std::size_t i = 0; i < kParserParsingTableTestFiles.size(); ++i) {
+    const auto& grammar_filename{kParserParsingTableTestFiles.at(i)};
+    Parser p{grammar_filename};
+
+    const auto& expected{kParsingTableExpected.at(i)};
+    if (!IsParsingTableMatch(p, expected)) {
+      spdlog::error("ComputeParsingTable() Test failed for grammar file {}",
+		    grammar_filename);
+    } else {
+      pass_count++;
+    }
+  }
+
+  spdlog::info("ComputeParsingTable() Tests - {} / {} passed",
+	       pass_count, kParserParsingTableTestFiles.size());
+}
+
 int main(int argc, char *argv[]) {
 
 #if defined(CCDEBUG)
@@ -364,6 +516,9 @@ int main(int argc, char *argv[]) {
   app.add_flag("--test-compute-follow",
                settings.test_compute_follow,
                "Test the ComputFollow() function of the Parser");
+  app.add_flag("--test-compute-parsing-table",
+               settings.test_compute_parsing_table,
+               "Test the ComputParsingTable() function of the Parser");
   CLI11_PARSE(app, argc, argv);
 
   ParserTest t{settings};
