@@ -1,4 +1,5 @@
 // Grammar
+// S -> E
 // E -> a X
 // X -> b E c
 // E -> m
@@ -12,6 +13,7 @@ m
 
 NONTERMINALS:
 // The first non-terminal defined here is always the start symbol
+S
 E
 X
 
@@ -20,6 +22,7 @@ PRODUCTIONS:
 // There should be only one production for the start symbol
 // All the individual elements on the left side of the production should be
 // separated by whitespace
+S : E
 E : a X
 X : b E c
 E : m

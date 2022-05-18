@@ -68,14 +68,16 @@ static const std::vector<std::string> kParserTestFiles {
 
 static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFirstExpected{
     // config_a.grammar
-    {{MakePETerminal("%empty"), {MakePETerminal("%empty")}},
+    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
+     {Parser::kEmptyTerminal, {Parser::kEmptyTerminal}},
      {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
      {MakePENonTerminal("E"), {MakePETerminal("a")}}
     },
     // config_b.grammar
-    {{Parser::kEmptyTerminal, {Parser::kEmptyTerminal}},
+    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
+     {Parser::kEmptyTerminal, {Parser::kEmptyTerminal}},
      {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
@@ -85,7 +87,8 @@ static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFirstE
      {MakePENonTerminal("T"), {MakePETerminal("x")}}
     },
     // config_c.grammar
-    {{Parser::kEmptyTerminal, {Parser::kEmptyTerminal}},
+    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
+     {Parser::kEmptyTerminal, {Parser::kEmptyTerminal}},
      {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
@@ -95,7 +98,8 @@ static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFirstE
      {MakePENonTerminal("T"), {MakePETerminal("x"), Parser::kEmptyTerminal}}
     },
     // config_d.grammar
-    {{MakePETerminal("a"), {MakePETerminal("a")}},
+    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
+     {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
      {MakePETerminal("x"), {MakePETerminal("x")}},
@@ -104,7 +108,8 @@ static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFirstE
      {MakePENonTerminal("X"), {MakePETerminal("x")}}
     },
     // config_e.grammar
-    {{Parser::kEmptyTerminal, {Parser::kEmptyTerminal}},
+    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
+     {Parser::kEmptyTerminal, {Parser::kEmptyTerminal}},
      {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
@@ -117,7 +122,8 @@ static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFirstE
      {MakePENonTerminal("Y"), {MakePETerminal("p"), Parser::kEmptyTerminal}},
     },
     // config_f.grammar
-    {{Parser::kEmptyTerminal, {Parser::kEmptyTerminal}},
+    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
+     {Parser::kEmptyTerminal, {Parser::kEmptyTerminal}},
      {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
@@ -133,20 +139,24 @@ static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFirstE
      {MakePENonTerminal("Y2"), {MakePETerminal("p2"), Parser::kEmptyTerminal}}
     },
     // config_g.grammar
-    {{MakePETerminal("a"), {MakePETerminal("a")}},
+    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
+     {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
      {MakePETerminal("x"), {MakePETerminal("x")}},
      {MakePETerminal("y"), {MakePETerminal("y")}},
+     {MakePENonTerminal("S"), {MakePETerminal("a")}},
      {MakePENonTerminal("E"), {MakePETerminal("a")}},
      {MakePENonTerminal("T"), {MakePETerminal("b")}},
      {MakePENonTerminal("X"), {MakePETerminal("x")}}
     },
     // config_h.grammar
-    {{MakePETerminal("a"), {MakePETerminal("a")}},
+    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
+     {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
      {MakePETerminal("m"), {MakePETerminal("m")}},
+     {MakePENonTerminal("S"), {MakePETerminal("a"), MakePETerminal("m")}},
      {MakePENonTerminal("E"), {MakePETerminal("a"), MakePETerminal("m")}},
      {MakePENonTerminal("X"), {MakePETerminal("b")}}
     }
@@ -181,12 +191,14 @@ static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFollow
     },
     // config_g.grammar
     {{MakePENonTerminal("T"), {}},
-     {MakePENonTerminal("E"), {MakePETerminal("c")}},
-     {MakePENonTerminal("X"), {MakePETerminal("c")}}
+     {MakePENonTerminal("S"), {}},
+     {MakePENonTerminal("E"), {MakePETerminal("c"), Parser::kEndOfInputTerminal}},
+     {MakePENonTerminal("X"), {MakePETerminal("c"), Parser::kEndOfInputTerminal}}
     },
     // config_h.grammar
-    {{MakePENonTerminal("E"), {MakePETerminal("c")}},
-     {MakePENonTerminal("X"), {MakePETerminal("c")}}
+    {{MakePENonTerminal("S"), {}},
+     {MakePENonTerminal("E"), {MakePETerminal("c"), Parser::kEndOfInputTerminal}},
+     {MakePENonTerminal("X"), {MakePETerminal("c"), Parser::kEndOfInputTerminal}}
     }
   };
 
