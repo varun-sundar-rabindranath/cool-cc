@@ -64,6 +64,7 @@ class Parser {
     ProductionElementVector terminals_;
     ProductionElementVector non_terminals_;
     ProductionVector productions_;
+    std::vector<std::string> productions_semantic_rules_;
     ProductionElement start_symbol_;
 
     // Derived State

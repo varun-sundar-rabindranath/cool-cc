@@ -12,6 +12,8 @@ static constexpr char const kGrammarFileTerminalsStart[] = "TERMINALS";
 static constexpr char const kGrammarFileNonTerminalsStart[] = "NONTERMINALS";
 static constexpr char const kGrammarFileProductionLRSeparator[] = ":";
 static constexpr char const kGrammarFileEmptyTerminal[] = "%empty";
+static constexpr char const kGrammarFileProductionSemanticRuleStart[] = "{";
+static constexpr char const kGrammarFileProductionSemanticRuleEnd[] = "}";
 
 /**
  * The function guarantees that,
@@ -23,4 +25,5 @@ void ParseGrammarFile(const std::string& grammar_filename,
 		      ProductionElementVector* const terminals,
 		      ProductionElementVector* const non_terminals,
 		      ProductionVector* const productions,
+		      std::vector<std::string>* const semantic_rules,
 		      ProductionElement* const start_symbol);

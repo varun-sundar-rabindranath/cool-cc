@@ -19,6 +19,7 @@ Parser::Parser(const std::string& grammar_filename) :
   terminals_{},
   non_terminals_{},
   productions_{},
+  productions_semantic_rules_{},
   terminal_id_map_{},
   non_terminal_id_map_{},
   production_id_map_{},
@@ -28,9 +29,8 @@ Parser::Parser(const std::string& grammar_filename) :
 
   spdlog::debug("Parser({})", grammar_filename_);
 
-  ParseGrammarFile(grammar_filename_, &terminals_,
-                   &non_terminals_, &productions_,
-                   &start_symbol_);
+  ParseGrammarFile(grammar_filename_, &terminals_, &non_terminals_,
+		   &productions_, &productions_semantic_rules_, &start_symbol_);
 
   // Add End Of Input terminals to the terminals_ and start_symbol production
   terminals_.push_back(kEndOfInputTerminal);
@@ -128,9 +128,10 @@ void Parser::DumpState() const {
     spdlog::debug("{}", nt.to_string());
   }
 
-  spdlog::debug("Productions ...");
-  for (const auto&p : productions_) {
-    spdlog::debug("{}", p.to_string());
+  spdlog::debug("Productions & Semantic Rules ...");
+  for (std::size_t i = 0; i < productions_.size(); ++i) {
+    spdlog::debug("{}", productions_.at(i).to_string());
+    spdlog::debug("{}", productions_semantic_rules_.at(i));
   }
 
   spdlog::debug("Start Symbol {} ", start_symbol_.to_string());
