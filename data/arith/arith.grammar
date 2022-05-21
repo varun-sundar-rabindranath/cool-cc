@@ -1,5 +1,8 @@
 // This is a comment
 
+INCLUDES:
+#include "./../data/arith/arith_ast.hpp"
+
 TERMINALS:
 // ideally this should be what the lexer gives you. but lets comeback to that later
 %empty
@@ -24,19 +27,50 @@ PRODUCTIONS:
 // All the individual elements on the left side of the production should be
 // separated by whitespace
 S : E
+{
+  // Semantic Rule
+  return new S_Node($1);
+}
 
 E : T E_DASH
+{
+  return new E_Node({$1, $2});
+}
 
 E_DASH : + T E_DASH
+{
+  return new E_DASH_Node({new Plus_Node() , $2, $3});
+}
 
 E_DASH : %empty
+{
+  return new E_DASH_Node({new Empty_Node()});
+}
 
 T : F T_DASH
+{
+  return new T_Node({$1, $2});
+}
 
 T_DASH : * F T_DASH
+{
+  return new T_DASH_Node({new Mul_Node(),
+			  $2, $3});
+}
 
 T_DASH : %empty
+{
+  return new T_DASH_Node({new Empty_Node()});
+}
 
 F : ( E )
+{
+  return new F_Node({new Open_Brace_Node(),
+		     $2,
+		     new Close_Brace_Node()});
+}
 
 F : id
+{
+  return new F_Node({new ID_Node()});
+}
