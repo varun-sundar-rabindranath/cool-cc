@@ -74,6 +74,10 @@ static void ParseProductionSemanticRule(
     return IsLineStart(kGrammarFileProductionSemanticRuleEnd, line);
   };
 
+  auto IsGrammarDefComment = [&](const std::string& line) -> bool {
+    return IsLineStart(kGrammarFileCommentStart, line);
+  };
+
   bool is_semantic_rule = false;
 
   while (!grammar_def_lines->empty()) {
@@ -82,6 +86,7 @@ static void ParseProductionSemanticRule(
 
     // ignore empty lines
     if (trimmed.empty()) { grammar_def_lines->pop_front(); continue; }
+    if (IsGrammarDefComment(trimmed)) { grammar_def_lines->pop_front(); continue; }
 
     is_semantic_rule = is_semantic_rule  || IsGrammarDefProductionSemanticRuleStartLine(line);
 
@@ -106,16 +111,21 @@ void ParseGrammarFile(const std::string& grammar_filename,
 		      ProductionElementVector* const non_terminals,
 		      ProductionVector* const productions,
 		      std::vector<std::string>* const semantic_rules,
+		      std::vector<std::string>* const semantic_rule_includes,
 		      ProductionElement* const start_symbol) {
   assert (terminals);
   assert (non_terminals);
   assert (productions);
+  assert (semantic_rules);
+  assert (semantic_rule_includes);
   assert (start_symbol);
 
   // clear
   terminals->clear();
   non_terminals->clear();
   productions->clear();
+  semantic_rules->clear();
+  semantic_rule_includes->clear();
 
   // create a set for terminals and non-terminals; The find() function is used
   // very frequently in this function.
@@ -125,6 +135,10 @@ void ParseGrammarFile(const std::string& grammar_filename,
   // helpers
   auto IsGrammarDefComment = [&](const std::string& line) -> bool {
     return IsLineStart(kGrammarFileCommentStart, line);
+  };
+
+  auto IsGrammarDefProductionSemanticRuleIncludesStartLine = [&](const std::string& line) -> bool {
+    return IsLineStart(kGrammarFileProductionSemanticRuleIncludesStart, line);
   };
 
   auto IsGrammarDefProductionsStartLine = [&](const std::string& line) -> bool {
@@ -148,13 +162,15 @@ void ParseGrammarFile(const std::string& grammar_filename,
   std::deque<std::string> grammar_def_lines{grammar_def_lines_vec.cbegin(),
 					    grammar_def_lines_vec.cend()};
 
-  /* There are 3 distinct sections in a grammar definition
+  /* There are 4 distinct sections in a grammar definition
    * 1. Terminals section
    * 2. Non Terminals section
    * 3. Production section
+   * 4. Semantic rule includes section
    * Parse each of these sections and make them a part of the Parser's state
    */
 
+  bool is_semantic_rule_includes_section{false};
   bool is_terminals_section{false};
   bool is_non_terminals_section{false};
   bool is_production_section{false};
@@ -171,10 +187,20 @@ void ParseGrammarFile(const std::string& grammar_filename,
     if (IsGrammarDefComment(trimmed)) { grammar_def_lines.pop_front(); continue; }
 
     // check if this is a section start
+    if (IsGrammarDefProductionSemanticRuleIncludesStartLine(line)) {
+      is_terminals_section = false;
+      is_non_terminals_section = false;
+      is_production_section = false;
+      is_semantic_rule_includes_section = true;
+      is_start_symbol = false;
+      grammar_def_lines.pop_front();
+      continue;
+    }
     if (IsGrammarDefTerminalsStartLine(line)) {
       is_terminals_section = true;
       is_non_terminals_section = false;
       is_production_section = false;
+      is_semantic_rule_includes_section = false;
       is_start_symbol = false;
       grammar_def_lines.pop_front();
       continue;
@@ -183,6 +209,7 @@ void ParseGrammarFile(const std::string& grammar_filename,
       is_terminals_section = false;
       is_non_terminals_section = true;
       is_production_section = false;
+      is_semantic_rule_includes_section = false;
       is_start_symbol = true; // The first symbol in the NT section is the start symbol
       grammar_def_lines.pop_front();
       continue;
@@ -191,7 +218,13 @@ void ParseGrammarFile(const std::string& grammar_filename,
       is_terminals_section = false;
       is_non_terminals_section = false;
       is_production_section = true;
+      is_semantic_rule_includes_section = false;
       is_start_symbol = false;
+      grammar_def_lines.pop_front();
+      continue;
+    }
+    if (is_semantic_rule_includes_section) {
+      semantic_rule_includes->push_back(trimmed);
       grammar_def_lines.pop_front();
       continue;
     }
@@ -275,7 +308,6 @@ void ParseGrammarFile(const std::string& grammar_filename,
       semantic_rules->push_back(production_semantic_rule);
       continue;
     }
-
   }
 
   // Check that the #semantic rules match the #productions

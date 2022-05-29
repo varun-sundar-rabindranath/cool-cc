@@ -7,6 +7,7 @@
 #include <string>
 
 static constexpr char const kGrammarFileCommentStart[] = "//";
+static constexpr char const kGrammarFileProductionSemanticRuleIncludesStart[] = "INCLUDES";
 static constexpr char const kGrammarFileProductionsStart[] = "PRODUCTIONS";
 static constexpr char const kGrammarFileTerminalsStart[] = "TERMINALS";
 static constexpr char const kGrammarFileNonTerminalsStart[] = "NONTERMINALS";
@@ -26,4 +27,5 @@ void ParseGrammarFile(const std::string& grammar_filename,
 		      ProductionElementVector* const non_terminals,
 		      ProductionVector* const productions,
 		      std::vector<std::string>* const semantic_rules,
+		      std::vector<std::string>* const semantic_rules_includes,
 		      ProductionElement* const start_symbol);

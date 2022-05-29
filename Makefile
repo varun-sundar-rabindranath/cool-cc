@@ -86,5 +86,5 @@ rlexer:
 	LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./build/ ./build/cool_cc --lexer-definition-filename /home/varun/study/compilers/cool-cc/data/lexer_regex.lex --lexer -f $(coolprogram)
 
 rparser:
-	LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./build/ ./build/cool_cc --grammar-definition-filename /home/varun/study/compilers/cool-cc/data/arith.grammar --parser
+	LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./build/ ./build/cool_cc --grammar-definition-filename /home/varun/study/compilers/cool-cc/data/arith/arith.grammar --parser
 

@@ -67,6 +67,8 @@ class Parser {
     std::vector<std::string> productions_semantic_rules_;
     ProductionElement start_symbol_;
 
+    std::vector<std::string> productions_semantic_rules_includes_;
+
     // Derived State
     /* ID mapping is only required for easy manipulation in algorithms
      * and datastructures.

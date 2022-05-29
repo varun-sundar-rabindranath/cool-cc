@@ -20,6 +20,7 @@ Parser::Parser(const std::string& grammar_filename) :
   non_terminals_{},
   productions_{},
   productions_semantic_rules_{},
+  productions_semantic_rules_includes_{},
   terminal_id_map_{},
   non_terminal_id_map_{},
   production_id_map_{},
@@ -30,7 +31,8 @@ Parser::Parser(const std::string& grammar_filename) :
   spdlog::debug("Parser({})", grammar_filename_);
 
   ParseGrammarFile(grammar_filename_, &terminals_, &non_terminals_,
-		   &productions_, &productions_semantic_rules_, &start_symbol_);
+		   &productions_, &productions_semantic_rules_,
+		   &productions_semantic_rules_includes_, &start_symbol_);
 
   // Add End Of Input terminals to the terminals_ and start_symbol production
   terminals_.push_back(kEndOfInputTerminal);
