@@ -33,6 +33,7 @@ int RunParser(const std::string& grammar_definition_file_name) {
   spdlog::info(" - Grammar definition file {}", grammar_definition_file_name);
 
   Parser parser{grammar_definition_file_name};
+  parser.WriteSemanticRules("/home/varun/study/compilers/cool-cc/data/arith/arith_semantic_rules.cpp");
   return 0;
 }
 

@@ -4,8 +4,8 @@ TEST_DIR=./test/
 INCLUDE_DIRS = -I/home/varun/study/compilers/cool-cc/include
 LIBRARIES= -L/home/varun/study/compilers/cool-cc/${BUILD_DIR}
 LD_FLAGS= -l fmt
-#CPP_FLAGS= -g -std=c++14 ${INCLUDE_DIRS} ${LIBRARIES} -DCCDEBUG
-CPP_FLAGS= -g -std=c++14 ${INCLUDE_DIRS} ${LIBRARIES}
+CPP_FLAGS= -g -std=c++14 ${INCLUDE_DIRS} ${LIBRARIES} -DCCDEBUG
+#CPP_FLAGS= -g -std=c++14 ${INCLUDE_DIRS} ${LIBRARIES}
 CPP= g++
 
 # Define all sources

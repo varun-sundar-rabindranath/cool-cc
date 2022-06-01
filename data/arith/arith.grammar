@@ -5,12 +5,12 @@ INCLUDES:
 
 TERMINALS:
 // ideally this should be what the lexer gives you. but lets comeback to that later
-%empty
-(
-)
+empty
+open_brace
+close_brace
 id
-*
-+
+asterisk
+plus
 
 NONTERMINALS:
 // The first non-terminal defined here is always the start symbol
@@ -29,48 +29,53 @@ PRODUCTIONS:
 S : E
 {
   // Semantic Rule
-  return new S_Node($1);
+  return MPTN(new S_Node({ R0 }));
 }
 
 E : T E_DASH
 {
-  return new E_Node({$1, $2});
+  return MPTN(new E_Node({ R0 , R1 }));
 }
 
-E_DASH : + T E_DASH
+E_DASH : plus T E_DASH
 {
-  return new E_DASH_Node({new Plus_Node() , $2, $3});
+  return MPTN(new E_DASH_Node(
+	      { MPTN(new Plus_Node()) , R1 , R2 }));
 }
 
-E_DASH : %empty
+E_DASH : empty
 {
-  return new E_DASH_Node({new Empty_Node()});
+  return MPTN(new E_DASH_Node(
+	      { MPTN(new Empty_Node()) }));
 }
 
 T : F T_DASH
 {
-  return new T_Node({$1, $2});
+  return MPTN(new T_Node({R0, R1}));
 }
 
-T_DASH : * F T_DASH
+T_DASH : asterisk F T_DASH
 {
-  return new T_DASH_Node({new Mul_Node(),
-			  $2, $3});
+  return MPTN(new T_DASH_Node(
+		{ MPTN(new Mul_Node()), R1, R2}));
 }
 
-T_DASH : %empty
+T_DASH : empty
 {
-  return new T_DASH_Node({new Empty_Node()});
+  return MPTN(new T_DASH_Node(
+		{ MPTN(new Empty_Node()) }));
 }
 
-F : ( E )
+F : open_brace E close_brace
 {
-  return new F_Node({new Open_Brace_Node(),
-		     $2,
-		     new Close_Brace_Node()});
+  return MPTN( new F_Node({
+		MPTN(new Open_Brace_Node()),
+		R1,
+		MPTN(new Close_Brace_Node())}));
 }
 
 F : id
 {
-  return new F_Node({new ID_Node()});
+  return MPTN(new F_Node({
+	      MPTN(new ID_Node())}));
 }

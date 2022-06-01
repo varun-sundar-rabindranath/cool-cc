@@ -58,6 +58,10 @@ class Parser {
     void DumpFollow() const;
     void DumpParsingTable() const;
 
+    // Parser generator functions
+    void WriteSemanticRules(const std::string& filename) const;
+    void WriteParsingTableHeader(const std::string& filename) const;
+
   private:
     // Actual State
     std::string grammar_filename_;

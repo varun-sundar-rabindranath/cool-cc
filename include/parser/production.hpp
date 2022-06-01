@@ -117,8 +117,18 @@ struct Production {
 
       if (right.empty()) { s += "empty "; }
 
-      for (auto r_element : right) {
+      for (const auto& r_element : right) {
         s += r_element.element + std::string(" ");
+      }
+      return s;
+    }
+
+    // Used in the Parser Generator to assign a function name to the semantic ruke
+    std::string to_function_name() const {
+      std::string s;
+      s += left.element + "_FNAME_";
+      for (const auto& r_element : right) {
+	s += r_element.element + std::string("_FNAME_");
       }
       return s;
     }
