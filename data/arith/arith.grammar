@@ -5,12 +5,12 @@ INCLUDES:
 
 TERMINALS:
 // ideally this should be what the lexer gives you. but lets comeback to that later
-empty
-open_brace
-close_brace
+%empty
+(
+)
 id
-asterisk
-plus
+*
++
 
 NONTERMINALS:
 // The first non-terminal defined here is always the start symbol
@@ -37,13 +37,13 @@ E : T E_DASH
   return MPTN(new E_Node({ R0 , R1 }));
 }
 
-E_DASH : plus T E_DASH
+E_DASH : + T E_DASH
 {
   return MPTN(new E_DASH_Node(
 	      { MPTN(new Plus_Node()) , R1 , R2 }));
 }
 
-E_DASH : empty
+E_DASH : %empty
 {
   return MPTN(new E_DASH_Node(
 	      { MPTN(new Empty_Node()) }));
@@ -54,19 +54,19 @@ T : F T_DASH
   return MPTN(new T_Node({R0, R1}));
 }
 
-T_DASH : asterisk F T_DASH
+T_DASH : * F T_DASH
 {
   return MPTN(new T_DASH_Node(
 		{ MPTN(new Mul_Node()), R1, R2}));
 }
 
-T_DASH : empty
+T_DASH : %empty
 {
   return MPTN(new T_DASH_Node(
 		{ MPTN(new Empty_Node()) }));
 }
 
-F : open_brace E close_brace
+F : ( E )
 {
   return MPTN( new F_Node({
 		MPTN(new Open_Brace_Node()),
