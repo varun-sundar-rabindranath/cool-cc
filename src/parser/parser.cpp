@@ -541,7 +541,7 @@ void Parser::WriteSemanticRules(const std::string& filename) const {
   // Write the headers
   // Write every semantic rule as a function
   // For every production add a function pointer definition
-  static const std::string kSemanticRuleFunctionPointer = 
+  static const std::string kSemanticRuleFunctionPointer =
     "std::shared_ptr<ParseTreeNode> (*)(const std::vector<std::shared_ptr<ParseTreeNode>>&)";
 
   auto make_semantic_rule_function_signature = [](const std::string& fname) -> std::string {
@@ -565,9 +565,14 @@ void Parser::WriteSemanticRules(const std::string& filename) const {
     return s;
   };
 
+  auto make_production_function_name = [](const std::size_t production_idx) -> std::string {
+    return fmt::format("P{}", production_idx);
+  };
+
   auto make_production_function_definition =
     [make_semantic_rule_function_signature, define_production_macros, undef_production_macros]
-    (const Production& p, const std::string& semantic_rule) -> std::string {
+    (const Production& p, const std::string& production_function_name,
+     const std::string& semantic_rule) -> std::string {
 
       std::string s;
 
@@ -577,7 +582,7 @@ void Parser::WriteSemanticRules(const std::string& filename) const {
       // macros defining R[0-9]+
       s += define_production_macros(p.right.size());
 
-      s += make_semantic_rule_function_signature(p.to_function_name()) + semantic_rule;
+      s += make_semantic_rule_function_signature(production_function_name) + semantic_rule;
 
       // undef the previously defined macros
       s += undef_production_macros(p.right.size());
@@ -585,18 +590,27 @@ void Parser::WriteSemanticRules(const std::string& filename) const {
       return s;
     };
 
-  auto make_production_function_map = []
+  auto make_production_function_map = [make_production_function_name]
     (const ProductionVector& productions) -> std::string {
       std::string map_defn;
       // Add map include
       map_defn += "#include<unordered_map> \n";
+
       // Start map definition
-      map_defn += fmt::format("std::unordered_map<std::string,{}> PRODUCTION_FUNCTION_MAP { \n", kSemanticRuleFunctionPointer);
-      for (const auto& p : productions) {
-	map_defn += fmt::format("\t { {}, &{} }, \n", p.to_function_name(), p.to_function_name());
+      map_defn += fmt::format(
+        "std::unordered_map<std::string,{}> PRODUCTION_FUNCTION_MAP {{ \n",
+        kSemanticRuleFunctionPointer);
+
+      for(std::size_t i = 0; i < productions.size(); ++i) {
+        const auto production_function_name{make_production_function_name(i)};
+	map_defn += fmt::format("\t {{ \"{}\", &{} }}, \n",
+                                production_function_name,
+                                production_function_name);
       }
+
       // End map definition
-      map_defn += "\t };";
+      map_defn += "\t }; \n";
+
       return map_defn;
     };
 
@@ -625,10 +639,11 @@ void Parser::WriteSemanticRules(const std::string& filename) const {
     const auto& p{productions_.at(i)};
     const auto& semantic_rule{productions_semantic_rules_.at(i)};
 
-    f << make_production_function_definition(p, semantic_rule);
+    f << make_production_function_definition(
+            p, make_production_function_name(i), semantic_rule);
   }
 
-  //f << make_production_function_map(productions_);
+  f << make_production_function_map(productions_);
 
   f << fmt::format("#undef MPTN") <<std::endl;
 
