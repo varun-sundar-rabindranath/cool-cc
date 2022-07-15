@@ -34,6 +34,7 @@ int RunParser(const std::string& grammar_definition_file_name) {
 
   Parser parser{grammar_definition_file_name};
   parser.WriteSemanticRules("/home/varun/study/compilers/cool-cc/data/arith/arith_semantic_rules.cpp");
+  parser.WriteParsingTableHeader("/home/varun/study/compilers/cool-cc/data/arith/arith_parsing_table.cpp");
   return 0;
 }
 

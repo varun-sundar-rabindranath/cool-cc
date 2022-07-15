@@ -175,6 +175,7 @@ void Parser::DumpParsingTable() const {
 
   const std::size_t cell_pre_padding{2};
   const std::size_t cell_post_padding{2};
+
   std::size_t cell_width{0};
   std::size_t cell_height{0};
   for (std::size_t r = 0; r < n_rows; ++r) {
@@ -537,10 +538,7 @@ void Parser::ComputeParsingTable() {
 
 void Parser::WriteSemanticRules(const std::string& filename) const {
   spdlog::debug("Write semantic rules to {}", filename);
-  // What to write?
-  // Write the headers
-  // Write every semantic rule as a function
-  // For every production add a function pointer definition
+
   static const std::string kSemanticRuleFunctionPointer =
     "std::shared_ptr<ParseTreeNode> (*)(const std::vector<std::shared_ptr<ParseTreeNode>>&)";
 
@@ -552,7 +550,7 @@ void Parser::WriteSemanticRules(const std::string& filename) const {
   auto define_production_macros = [](const std::size_t n) -> std::string {
     std::string s;
     for (std::size_t i = 0; i < n; ++i) {
-      s += fmt::format("#define R{} PTN_right.at({}) \n", i, i);
+      s += fmt::format("#define R{} PTN_right.at({})\n", i, i);
     }
     return s;
   };
@@ -560,7 +558,7 @@ void Parser::WriteSemanticRules(const std::string& filename) const {
   auto undef_production_macros = [](const std::size_t n) -> std::string {
     std::string s;
     for (std::size_t i = 0; i < n; ++i) {
-      s += fmt::format("#undef R{} \n", i);
+      s += fmt::format("#undef R{}\n", i);
     }
     return s;
   };
@@ -577,7 +575,7 @@ void Parser::WriteSemanticRules(const std::string& filename) const {
       std::string s;
 
       // Add comment
-      s += fmt::format("\n\n/*** Production : {} ****/ \n", p.to_string());
+      s += fmt::format("\n\n/*** Production : {} ****/\n", p.to_string());
 
       // macros defining R[0-9]+
       s += define_production_macros(p.right.size());
@@ -591,25 +589,27 @@ void Parser::WriteSemanticRules(const std::string& filename) const {
     };
 
   auto make_production_function_map = [make_production_function_name]
-    (const ProductionVector& productions) -> std::string {
+    (const ProductionVector& productions,
+     const ProductionIDMap& production_id_map) -> std::string {
       std::string map_defn;
       // Add map include
-      map_defn += "#include<unordered_map> \n";
+      map_defn += "#include<unordered_map>\n";
 
       // Start map definition
       map_defn += fmt::format(
-        "std::unordered_map<std::string,{}> PRODUCTION_FUNCTION_MAP {{ \n",
+        "std::unordered_map<std::string,{}> PRODUCTION_FUNCTION_MAP {{\n",
         kSemanticRuleFunctionPointer);
 
-      for(std::size_t i = 0; i < productions.size(); ++i) {
-        const auto production_function_name{make_production_function_name(i)};
-	map_defn += fmt::format("\t {{ \"{}\", &{} }}, \n",
+      for(const auto& production : productions) {
+        const auto production_function_name{make_production_function_name(
+            production_id_map.at(production))};
+	map_defn += fmt::format("\t {{ \"{}\", &{} }},\n",
                                 production_function_name,
                                 production_function_name);
       }
 
       // End map definition
-      map_defn += "\t }; \n";
+      map_defn += "\t };\n";
 
       return map_defn;
     };
@@ -643,12 +643,197 @@ void Parser::WriteSemanticRules(const std::string& filename) const {
             p, make_production_function_name(i), semantic_rule);
   }
 
-  f << make_production_function_map(productions_);
+  f << make_production_function_map(productions_, production_id_map_);
 
   f << fmt::format("#undef MPTN") <<std::endl;
 
   f.close();
 }
 
-void Parser::WriteParsingTableHeader(const std::string&) const {
+void Parser::WriteParsingTableHeader(const std::string& filename) const {
+  spdlog::debug("Write Parsing Table to {}", filename);
+
+  // Open file stream
+  std::fstream f;
+  f.open(filename, std::fstream::out | std::fstream::trunc);
+  if (!f.is_open()) {
+    throw std::runtime_error(fmt::format("{} - Open failed | {}", filename, strerror(errno)));
+  }
+
+  auto define_production_element_vector =
+    [](const ProductionElementVector& pes, const std::string& var_name)
+    -> std::string {
+
+    std::string definition;
+
+    // Add required headers
+    definition += "#include <parser/production.hpp> // ProductionElementVector\n";
+
+    // Start ProductionElementVector definition
+    definition += fmt::format("static const ProductionElementVector {}{{\n",
+                              var_name);
+
+    // Define production elements
+    for (std::size_t i = 0; i < pes.size(); ++i) {
+      const std::string pe_type_string =
+        pes.at(i).type == ProductionElementType::TERMINAL ?
+        "ProductionElementType::TERMINAL" : "ProductionElementType::NON_TERMINAL";
+
+      definition += fmt::format(
+        " ProductionElement {{ {}, \"{}\" }}", pe_type_string, pes.at(i).element);
+      definition += i != pes.size() - 1 ? ",\n" : "\n";
+    }
+
+    // Close ProductionElementVector definition
+    definition += " };";
+    return definition;
+  };
+
+  auto define_production_element_id_map =
+    [](const ProductionElementIDMap& pe_id_map, const std::string& var_name)
+    -> std::string {
+
+      std::string definition;
+
+      // Add required headers
+      definition += "#include <parser/parser.hpp> // ProductionElementIDMap\n";
+      definition += "#include <parser/production.hpp> // ProductionElementVector\n";
+
+      // Start ProductionElementIDMap definition
+      definition += fmt::format(
+        "static const Parser::ProductionElementIDMap {}{{\n", var_name);
+
+      // Define production element map entries
+      std::size_t element_idx{0};
+      for (const auto& pe_id : pe_id_map) {
+        const std::string pe_type_string =
+          pe_id.first.type == ProductionElementType::TERMINAL ?
+          "ProductionElementType::TERMINAL" : "ProductionElementType::NON_TERMINAL";
+
+        definition += fmt::format("  {{ ProductionElement{{ {}, \"{}\" }}, {} }}",
+                                  pe_type_string, pe_id.first.element, pe_id.second);
+        definition += element_idx == pe_id_map.size() - 1 ? "\n" : ",\n";
+        element_idx++;
+      }
+
+      // End ProductionElementIDMap definition
+      definition += " };";
+
+      return definition;
+    };
+
+  auto define_parsing_table = [](
+    const ProductionElementIDMap& terminal_id_map,
+    const ProductionElementIDMap& non_terminal_id_map,
+    const ProductionIDMap& production_id_map,
+    const RDParsingTable& parsing_table,
+    const std::string& var_name) -> std::string {
+
+      std::vector<ProductionElement> terminals(terminal_id_map.size(),
+                                               ProductionElement{});
+      std::vector<ProductionElement> non_terminals(non_terminal_id_map.size(),
+                                                   ProductionElement{});
+      std::vector<Production> productions;
+
+      // Position terminals and non-terminals based on their ids
+      for (const auto& terminal_id : terminal_id_map) {
+        terminals.at(terminal_id.second) = terminal_id.first;
+      }
+      for (const auto& non_terminal_id : non_terminal_id_map) {
+        non_terminals.at(non_terminal_id.second) = non_terminal_id.first;
+      }
+      // Position productions based on their ids
+      {
+        for (const auto& p_id : production_id_map) {
+          productions.push_back(p_id.first);
+        }
+        std::sort(productions.begin(), productions.end(),
+                  [&](const Production& a, const Production& b){
+                    return production_id_map.at(a) < production_id_map.at(b);
+                  });
+      }
+
+      std::string definition;
+
+      // Add required headers
+      definition += "#include <vector>\n";
+
+      // Add productions and production ids as comments
+      definition += "// Productions and IDs\n";
+      for (const auto& p : productions) {
+        definition += fmt::format("// {} - {}\n",
+                                  production_id_map.at(p), p.to_string());
+      }
+
+      // Start table definition
+      definition += fmt::format(
+        "static const std::vector<std::vector<std::vector<std::size_t>>> {}{{\n", var_name);
+
+      // Add table definitions
+      for (std::size_t nt_idx = 0; nt_idx < non_terminals.size(); nt_idx++) {
+        definition += "  {";
+        for (std::size_t t_idx = 0; t_idx < terminals.size(); t_idx++) {
+
+          // Start production ids definition block
+          definition += "{";
+          const auto& production_ids{parsing_table[nt_idx][t_idx]};
+          for (std::size_t pidx = 0; pidx < production_ids.size(); pidx++) {
+            definition += fmt::format("{}", production_ids.at(pidx));
+            definition += pidx == production_ids.size() - 1 ? "" : ",";
+          }
+          definition += "}";
+          definition += t_idx == terminals.size() - 1 ? "" : ", ";
+        }
+        definition += "}";
+        definition += nt_idx == non_terminals.size() - 1 ? "\n" : ",\n";
+      }
+
+
+      // Close table definition
+      definition += "};\n";
+
+      return definition;
+    };
+
+
+  // Write Terminals definition
+  {
+    const std::string definition{
+      define_production_element_vector(terminals_, "TERMINALS_DEFINITION")};
+    f << "// Terminals\n"<< std::endl << definition << std::endl;
+  }
+
+  // Write Non Terminals definition
+  {
+    const std::string definition{
+      define_production_element_vector(non_terminals_, "NON_TERMINALS_DEFINITION")};
+    f << "// Non Terminals\n"<< std::endl << definition << std::endl;
+  }
+
+  // Write Terminals - ID map
+  {
+    const std::string definition {
+      define_production_element_id_map(terminal_id_map_,
+                                       "TERMINALS_ID_MAP_DEFINITION")};
+    f << " // Terminals ID Map\n"<< std::endl << definition << std::endl;
+  }
+
+  // Write Non Terminals - ID map
+  {
+    const std::string definition {
+      define_production_element_id_map(non_terminal_id_map_,
+                                       "NON_TERMINALS_ID_MAP_DEFINITION")};
+    f << " // Non Terminals ID Map\n"<< std::endl << definition << std::endl;
+  }
+
+  // Write ParsingTable
+  {
+    const std::string definition {
+        define_parsing_table(terminal_id_map_, non_terminal_id_map_,
+                             production_id_map_, rd_parsing_table_,
+                             "PARSING_TABLE_DEFINITION")};
+    f << " // Parsing Table\n"<< std::endl << definition << std::endl;
+  }
+
+  f.close();
 }
