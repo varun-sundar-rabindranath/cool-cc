@@ -539,11 +539,14 @@ void Parser::ComputeParsingTable() {
 void Parser::WriteSemanticRules(const std::string& filename) const {
   spdlog::debug("Write semantic rules to {}", filename);
 
-  static const std::string kSemanticRuleFunctionPointer =
-    "std::shared_ptr<ParseTreeNode> (*)(const std::vector<std::shared_ptr<ParseTreeNode>>&)";
+  static const std::string kUsingStatements{
+    std::string("using ParseTreeNodePTR = std::shared_ptr<ParseTreeNode>;\n") +
+    std::string("using ParseTreeNodePTRS = std::vector<ParseTreeNodePTR>;\n") +
+    std::string("using ParseTreeNodeFPTR = ParseTreeNodePTR (*)(const ParseTreeNodePTRS&);\n")
+  };
 
   auto make_semantic_rule_function_signature = [](const std::string& fname) -> std::string {
-    return fmt::format("std::shared_ptr<ParseTreeNode> {}(const std::vector<std::shared_ptr<ParseTreeNode>>& PTN_right)",
+    return fmt::format("ParseTreeNodePTR {}(const ParseTreeNodePTRS& PTN_right)",
 		       fname);
   };
 
@@ -596,9 +599,8 @@ void Parser::WriteSemanticRules(const std::string& filename) const {
       map_defn += "#include<unordered_map>\n";
 
       // Start map definition
-      map_defn += fmt::format(
-        "std::unordered_map<std::string,{}> PRODUCTION_FUNCTION_MAP {{\n",
-        kSemanticRuleFunctionPointer);
+      map_defn +=
+        "extern const std::unordered_map<std::string,ParseTreeNodeFPTR> PRODUCTION_FUNCTION_MAP {\n";
 
       for(const auto& production : productions) {
         const auto production_function_name{make_production_function_name(
@@ -627,8 +629,11 @@ void Parser::WriteSemanticRules(const std::string& filename) const {
     f << h << std::endl;
   }
 
+  // Write using statements
+  f << kUsingStatements << std::endl;
+
   // Define MPTN - Make ParseTreeNode
-  f << fmt::format("#define MPTN(arg) std::shared_ptr<ParseTreeNode>(dynamic_cast<ParseTreeNode*>(arg))") << std::endl;
+  f << fmt::format("#define MPTN(arg) ParseTreeNodePTR(dynamic_cast<ParseTreeNode*>(arg))") << std::endl;
 
   // Add headers that are required by this code-generation block
   f << "#include <memory>" <<std::endl;
@@ -670,7 +675,7 @@ void Parser::WriteParsingTableHeader(const std::string& filename) const {
     definition += "#include <parser/production.hpp> // ProductionElementVector\n";
 
     // Start ProductionElementVector definition
-    definition += fmt::format("static const ProductionElementVector {}{{\n",
+    definition += fmt::format("extern const ProductionElementVector {}{{\n",
                               var_name);
 
     // Define production elements
@@ -701,7 +706,7 @@ void Parser::WriteParsingTableHeader(const std::string& filename) const {
 
       // Start ProductionElementIDMap definition
       definition += fmt::format(
-        "static const Parser::ProductionElementIDMap {}{{\n", var_name);
+        "extern const Parser::ProductionElementIDMap {}{{\n", var_name);
 
       // Define production element map entries
       std::size_t element_idx{0};
@@ -767,7 +772,7 @@ void Parser::WriteParsingTableHeader(const std::string& filename) const {
 
       // Start table definition
       definition += fmt::format(
-        "static const std::vector<std::vector<std::vector<std::size_t>>> {}{{\n", var_name);
+        "extern const std::vector<std::vector<std::vector<std::size_t>>> {}{{\n", var_name);
 
       // Add table definitions
       for (std::size_t nt_idx = 0; nt_idx < non_terminals.size(); nt_idx++) {
