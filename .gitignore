@@ -4,3 +4,7 @@
 *.cclex
 *.swp
 *.swo
+
+# whitelist
+!.gitignore
+!CMakeLists.txt

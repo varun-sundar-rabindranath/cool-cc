@@ -122,7 +122,7 @@ int main(int argc, char *argv[]) {
   CLI::App app{"lexer_test - Lexer Test File"};
   app.add_option("--lexer-definition-filename",
                  settings.lexer_definition_file_name,
-                 "File defining tokens and regexes");
+                 "File defining tokens and regexes")->required();
   CLI11_PARSE(app, argc, argv);
 
   RunTests(settings);

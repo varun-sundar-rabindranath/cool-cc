@@ -1,0 +1,28 @@
+# Bash environment setup for building cool-cc and running cool-cc executables
+
+if test -e "$HOME/.bashrc"; then
+  source "$HOME/.bashrc"
+fi
+
+if [[ -e /usr/lib/git-core/git-sh-prompt ]]; then
+  . /usr/lib/git-core/git-sh-prompt
+__git_branch() {
+  if [ -d "${COOLCC_SOURCE_DIR}" ]; then
+    pushd ${COOLCC_SOURCE_DIR} > /dev/null
+    __git_ps1 "[%s]"
+    popd > /dev/null
+  fi
+}
+else
+__git_branch() {
+  echo ""
+}
+fi
+
+# Setup PS1
+PS1="\[\033[01;32m\][dev] \$(__git_branch)"
+PS1+="\[\033[00m\]:"
+PS1+="\[\033[01;34m\]\w\[\033[00m\]"
+PS1+='\$ '
+
+export PS1
