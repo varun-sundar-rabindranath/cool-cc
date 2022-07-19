@@ -7,3 +7,5 @@ add_library(${LIBRARY_NAME}
 
 target_link_libraries(${LIBRARY_NAME}
 		      fmt::fmt)
+
+install(TARGETS ${LIBRARY_NAME} DESTINATION lib)

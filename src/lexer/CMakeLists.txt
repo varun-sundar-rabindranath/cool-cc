@@ -11,3 +11,5 @@ target_link_libraries(${LIBRARY_NAME}
 		      utils
 		      errorhandler
 		      fmt::fmt)
+
+install(TARGETS ${LIBRARY_NAME} DESTINATION lib)
