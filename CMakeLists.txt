@@ -23,4 +23,4 @@ find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 
 add_subdirectory(src)
-
+add_subdirectory(test)
