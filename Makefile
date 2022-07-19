@@ -3,7 +3,7 @@
 build:
 	mkdir -p ${COOLCC_BUILD_DIR}
 	cmake -S ${COOLCC_SOURCE_DIR} -B  ${COOLCC_BUILD_DIR}
-	cmake --build ${COOLCC_BUILD_DIR}
+	cmake --build ${COOLCC_BUILD_DIR} -j 8
 
 .PHONY: install
 install:
