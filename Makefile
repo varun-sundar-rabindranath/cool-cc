@@ -1,3 +1,4 @@
+# Makefile is replaced by cmake - This is deprecated - Remove this file
 BUILD_DIR=./build/
 SOURCE_DIR=./src/
 TEST_DIR=./test/
