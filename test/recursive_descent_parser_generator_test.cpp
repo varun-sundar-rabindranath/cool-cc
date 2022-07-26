@@ -1,8 +1,8 @@
-// Unit tests for the Parser
+// Unit tests for the Recursive Descent Parser Generator
 
 #include <vector>
 #include <string>
-#include <parser/parser.hpp>
+#include <parser/recursive_descent_parser_generator.hpp>
 #include <spdlog/spdlog.h>
 #include <CLI/CLI11.hpp>
 
@@ -31,7 +31,7 @@ static Production MakeProduction(const std::string& left_str,
   return Production{left, right};
 }
 
-static const std::vector<std::string> kParserTestFiles {
+static const std::vector<std::string> kParserGeneratorTestFiles {
   /**
    * E -> abc
    */
@@ -82,18 +82,19 @@ static const std::vector<std::string> kParserTestFiles {
   "./test-src/parser-test-grammar-files/config_h.grammar"
 };
 
-static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFirstExpected{
+static const std::vector<RecursiveDescentParserGenerator::ProductionElementFirstSet>
+  kParserGeneratorComputeFirstExpected{
     // config_a.grammar
-    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
-     {Parser::kEmptyTerminal, {Parser::kEmptyTerminal}},
+    {{ParserGenerator::kEndOfInputTerminal, {ParserGenerator::kEndOfInputTerminal}},
+     {ParserGenerator::kEmptyTerminal, {ParserGenerator::kEmptyTerminal}},
      {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
      {MakePENonTerminal("E"), {MakePETerminal("a")}}
     },
     // config_b.grammar
-    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
-     {Parser::kEmptyTerminal, {Parser::kEmptyTerminal}},
+    {{ParserGenerator::kEndOfInputTerminal, {ParserGenerator::kEndOfInputTerminal}},
+     {ParserGenerator::kEmptyTerminal, {ParserGenerator::kEmptyTerminal}},
      {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
@@ -103,18 +104,18 @@ static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFirstE
      {MakePENonTerminal("T"), {MakePETerminal("x")}}
     },
     // config_c.grammar
-    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
-     {Parser::kEmptyTerminal, {Parser::kEmptyTerminal}},
+    {{ParserGenerator::kEndOfInputTerminal, {ParserGenerator::kEndOfInputTerminal}},
+     {ParserGenerator::kEmptyTerminal, {ParserGenerator::kEmptyTerminal}},
      {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
      {MakePETerminal("x"), {MakePETerminal("x")}},
      {MakePETerminal("y"), {MakePETerminal("y")}},
      {MakePENonTerminal("E"), {MakePETerminal("a"), MakePETerminal("x")}},
-     {MakePENonTerminal("T"), {MakePETerminal("x"), Parser::kEmptyTerminal}}
+     {MakePENonTerminal("T"), {MakePETerminal("x"), ParserGenerator::kEmptyTerminal}}
     },
     // config_d.grammar
-    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
+    {{ParserGenerator::kEndOfInputTerminal, {ParserGenerator::kEndOfInputTerminal}},
      {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
@@ -124,8 +125,8 @@ static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFirstE
      {MakePENonTerminal("X"), {MakePETerminal("x")}}
     },
     // config_e.grammar
-    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
-     {Parser::kEmptyTerminal, {Parser::kEmptyTerminal}},
+    {{ParserGenerator::kEndOfInputTerminal, {ParserGenerator::kEndOfInputTerminal}},
+     {ParserGenerator::kEmptyTerminal, {ParserGenerator::kEmptyTerminal}},
      {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
@@ -135,11 +136,11 @@ static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFirstE
      {MakePETerminal("q"), {MakePETerminal("q")}},
      {MakePENonTerminal("E"), {MakePETerminal("a")}},
      {MakePENonTerminal("X"), {MakePETerminal("x")}},
-     {MakePENonTerminal("Y"), {MakePETerminal("p"), Parser::kEmptyTerminal}},
+     {MakePENonTerminal("Y"), {MakePETerminal("p"), ParserGenerator::kEmptyTerminal}},
     },
     // config_f.grammar
-    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
-     {Parser::kEmptyTerminal, {Parser::kEmptyTerminal}},
+    {{ParserGenerator::kEndOfInputTerminal, {ParserGenerator::kEndOfInputTerminal}},
+     {ParserGenerator::kEmptyTerminal, {ParserGenerator::kEmptyTerminal}},
      {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
@@ -151,11 +152,11 @@ static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFirstE
      {MakePETerminal("q2"), {MakePETerminal("q2")}},
      {MakePENonTerminal("E"), {MakePETerminal("a")}},
      {MakePENonTerminal("X"), {MakePETerminal("x")}},
-     {MakePENonTerminal("Y1"), {MakePETerminal("p1"), Parser::kEmptyTerminal}},
-     {MakePENonTerminal("Y2"), {MakePETerminal("p2"), Parser::kEmptyTerminal}}
+     {MakePENonTerminal("Y1"), {MakePETerminal("p1"), ParserGenerator::kEmptyTerminal}},
+     {MakePENonTerminal("Y2"), {MakePETerminal("p2"), ParserGenerator::kEmptyTerminal}}
     },
     // config_g.grammar
-    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
+    {{ParserGenerator::kEndOfInputTerminal, {ParserGenerator::kEndOfInputTerminal}},
      {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
@@ -167,7 +168,7 @@ static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFirstE
      {MakePENonTerminal("X"), {MakePETerminal("x")}}
     },
     // config_h.grammar
-    {{Parser::kEndOfInputTerminal, {Parser::kEndOfInputTerminal}},
+    {{ParserGenerator::kEndOfInputTerminal, {ParserGenerator::kEndOfInputTerminal}},
      {MakePETerminal("a"), {MakePETerminal("a")}},
      {MakePETerminal("b"), {MakePETerminal("b")}},
      {MakePETerminal("c"), {MakePETerminal("c")}},
@@ -178,7 +179,8 @@ static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFirstE
     }
   };
 
-static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFollowExpected{
+static const std::vector<RecursiveDescentParserGenerator::ProductionElementFirstSet>
+  kParserComputeFollowExpected{
     // config_a.grammar
     {{MakePENonTerminal("E"), {}}
     },
@@ -208,13 +210,13 @@ static const std::vector<Parser::ProductionElementFirstSet> kParserComputeFollow
     // config_g.grammar
     {{MakePENonTerminal("T"), {}},
      {MakePENonTerminal("S"), {}},
-     {MakePENonTerminal("E"), {MakePETerminal("c"), Parser::kEndOfInputTerminal}},
-     {MakePENonTerminal("X"), {MakePETerminal("c"), Parser::kEndOfInputTerminal}}
+     {MakePENonTerminal("E"), {MakePETerminal("c"), ParserGenerator::kEndOfInputTerminal}},
+     {MakePENonTerminal("X"), {MakePETerminal("c"), ParserGenerator::kEndOfInputTerminal}}
     },
     // config_h.grammar
     {{MakePENonTerminal("S"), {}},
-     {MakePENonTerminal("E"), {MakePETerminal("c"), Parser::kEndOfInputTerminal}},
-     {MakePENonTerminal("X"), {MakePETerminal("c"), Parser::kEndOfInputTerminal}}
+     {MakePENonTerminal("E"), {MakePETerminal("c"), ParserGenerator::kEndOfInputTerminal}},
+     {MakePENonTerminal("X"), {MakePETerminal("c"), ParserGenerator::kEndOfInputTerminal}}
     }
   };
 
@@ -250,28 +252,29 @@ static const std::vector<kParsingTableEntries> kParsingTableExpected {
     {"E", "id", MakeProduction("E", {"T", "E_DASH"}, {0, 0})},
     {"E", "(", MakeProduction("E", {"T", "E_DASH"}, {0, 0})},
     {"E_DASH", "+", MakeProduction("E_DASH", {"+", "T", "E_DASH"}, {1, 0, 0})},
-    {"E_DASH", ")", MakeProduction("E_DASH", {Parser::kEmptyTerminal.element}, {1})},
-    {"E_DASH", "$", MakeProduction("E_DASH", {Parser::kEmptyTerminal.element}, {1})},
+    {"E_DASH", ")", MakeProduction("E_DASH", {ParserGenerator::kEmptyTerminal.element}, {1})},
+    {"E_DASH", "$", MakeProduction("E_DASH", {ParserGenerator::kEmptyTerminal.element}, {1})},
     {"T", "id", MakeProduction("T", {"F", "T_DASH"}, {0, 0})},
     {"T", "(", MakeProduction("T", {"F", "T_DASH"}, {0, 0})},
-    {"T_DASH", "+", MakeProduction("T_DASH", {Parser::kEmptyTerminal.element}, {1})},
-    {"T_DASH", ")", MakeProduction("T_DASH", {Parser::kEmptyTerminal.element}, {1})},
-    {"T_DASH", "$", MakeProduction("T_DASH", {Parser::kEmptyTerminal.element}, {1})},
+    {"T_DASH", "+", MakeProduction("T_DASH", {ParserGenerator::kEmptyTerminal.element}, {1})},
+    {"T_DASH", ")", MakeProduction("T_DASH", {ParserGenerator::kEmptyTerminal.element}, {1})},
+    {"T_DASH", "$", MakeProduction("T_DASH", {ParserGenerator::kEmptyTerminal.element}, {1})},
     {"T_DASH", "*", MakeProduction("T_DASH", {"*", "F", "T_DASH"}, {1, 0, 0})},
     {"F", "id", MakeProduction("F", {"id"}, {1})},
     {"F", "(", MakeProduction("F", {"(", "E", ")"}, {1, 0, 1})}
   }
 };
 
-struct ParserTestSettings {
+struct ParserGeneratorTestSettings {
   bool test_compute_first{false};
   bool test_compute_follow{false};
   bool test_compute_parsing_table{false};
 };
 
-class ParserTest {
+class ParserGeneratorTest {
   public:
-    ParserTest(const ParserTestSettings& settings) : settings_{settings} {
+    ParserGeneratorTest(const ParserGeneratorTestSettings& settings) :
+      settings_{settings} {
     }
 
     bool RunTests() {
@@ -302,24 +305,24 @@ class ParserTest {
 
     // TODO: Please use templates instead
     bool CompareProductionElementFirstSets(
-      const Parser::ProductionElementFirstSet& a,
-      const Parser::ProductionElementFirstSet& b) const;
+      const RecursiveDescentParserGenerator::ProductionElementFirstSet& a,
+      const RecursiveDescentParserGenerator::ProductionElementFirstSet& b) const;
     bool CompareProductionElementFollowSets(
-      const Parser::ProductionElementFollowSet& a,
-      const Parser::ProductionElementFollowSet& b) const;
+      const RecursiveDescentParserGenerator::ProductionElementFollowSet& a,
+      const RecursiveDescentParserGenerator::ProductionElementFollowSet& b) const;
     bool CompareProductionVectors(
       const ProductionVector& a,
       const ProductionVector& b) const;
     bool IsParsingTableMatch(
-      const Parser& p,
+      const RecursiveDescentParserGenerator& p,
       const kParsingTableEntries& expected) const;
 
   private:
-    ParserTestSettings settings_;
+    ParserGeneratorTestSettings settings_;
 };
 
-bool ParserTest::CompareProductionElementSets(const ProductionElementSet& a,
-					      const ProductionElementSet& b) const {
+bool ParserGeneratorTest::CompareProductionElementSets(
+  const ProductionElementSet& a, const ProductionElementSet& b) const {
   // Test sizes
   if (a.size() != b.size()) { return false; }
   for (const auto& a_item : a) {
@@ -328,9 +331,9 @@ bool ParserTest::CompareProductionElementSets(const ProductionElementSet& a,
   return true;
 };
 
-bool ParserTest::CompareProductionElementFirstSets(
-      const Parser::ProductionElementFirstSet& a,
-      const Parser::ProductionElementFirstSet& b) const {
+bool ParserGeneratorTest::CompareProductionElementFirstSets(
+      const RecursiveDescentParserGenerator::ProductionElementFirstSet& a,
+      const RecursiveDescentParserGenerator::ProductionElementFirstSet& b) const {
 
   // compare sizes
   if (a.size() != b.size()) { return false; }
@@ -352,9 +355,9 @@ bool ParserTest::CompareProductionElementFirstSets(
   return true;
 }
 
-bool ParserTest::CompareProductionElementFollowSets(
-      const Parser::ProductionElementFollowSet& a,
-      const Parser::ProductionElementFollowSet& b) const {
+bool ParserGeneratorTest::CompareProductionElementFollowSets(
+      const RecursiveDescentParserGenerator::ProductionElementFollowSet& a,
+      const RecursiveDescentParserGenerator::ProductionElementFollowSet& b) const {
 
   // compare sizes
   if (a.size() != b.size()) { return false; }
@@ -376,7 +379,7 @@ bool ParserTest::CompareProductionElementFollowSets(
   return true;
 }
 
-bool ParserTest::CompareProductionVectors(
+bool ParserGeneratorTest::CompareProductionVectors(
   const ProductionVector& a,
   const ProductionVector& b) const {
 
@@ -397,12 +400,14 @@ bool ParserTest::CompareProductionVectors(
   return true;
 }
 
-bool ParserTest::IsParsingTableMatch(const Parser& p,
-				     const kParsingTableEntries& expected) const {
+bool ParserGeneratorTest::IsParsingTableMatch(
+  const RecursiveDescentParserGenerator& p,
+  const kParsingTableEntries& expected) const {
+
   const auto& terminals{p.GetTerminals()};
   const auto& non_terminals{p.GetNonTerminals()};
 
-  auto get_expected_productions = 
+  auto get_expected_productions =
     [&](const ProductionElement& nt, const ProductionElement& t) -> ProductionVector {
       ProductionVector expected_ps;
       for (const auto& pt_entry : expected) {
@@ -436,15 +441,15 @@ bool ParserTest::IsParsingTableMatch(const Parser& p,
 
 // Actual tests
 
-void ParserTest::TestComputeFirst() const {
+void ParserGeneratorTest::TestComputeFirst() const {
 
   int pass_count = 0;
-  for (std::size_t i = 0; i < kParserTestFiles.size(); ++i) {
-    const auto& grammar_filename{kParserTestFiles.at(i)};
-    Parser p{grammar_filename};
+  for (std::size_t i = 0; i < kParserGeneratorTestFiles.size(); ++i) {
+    const auto& grammar_filename{kParserGeneratorTestFiles.at(i)};
+    RecursiveDescentParserGenerator p{grammar_filename};
 
     const auto& actual{p.GetFirsts()};
-    const auto& expected{kParserComputeFirstExpected.at(i)};
+    const auto& expected{kParserGeneratorComputeFirstExpected.at(i)};
 
     if (!CompareProductionElementFirstSets(actual, expected)) {
       spdlog::error("ComputeFirst() Test failed for grammar file {}",
@@ -455,15 +460,15 @@ void ParserTest::TestComputeFirst() const {
   }
 
   spdlog::info("ComputeFirst() Tests - {} / {} passed",
-	       pass_count, kParserTestFiles.size());
+	       pass_count, kParserGeneratorTestFiles.size());
 }
 
-void ParserTest::TestComputeFollow() const {
+void ParserGeneratorTest::TestComputeFollow() const {
 
   int pass_count = 0;
-  for (std::size_t i = 0; i < kParserTestFiles.size(); ++i) {
-    const auto& grammar_filename{kParserTestFiles.at(i)};
-    Parser p{grammar_filename};
+  for (std::size_t i = 0; i < kParserGeneratorTestFiles.size(); ++i) {
+    const auto& grammar_filename{kParserGeneratorTestFiles.at(i)};
+    RecursiveDescentParserGenerator p{grammar_filename};
 
     const auto& actual{p.GetFollows()};
     const auto& expected{kParserComputeFollowExpected.at(i)};
@@ -477,15 +482,15 @@ void ParserTest::TestComputeFollow() const {
   }
 
   spdlog::info("ComputeFollow() Tests - {} / {} passed",
-	       pass_count, kParserTestFiles.size());
+	       pass_count, kParserGeneratorTestFiles.size());
 }
 
-void ParserTest::TestComputeParsingTable() const {
+void ParserGeneratorTest::TestComputeParsingTable() const {
 
   int pass_count = 0;
   for (std::size_t i = 0; i < kParserParsingTableTestFiles.size(); ++i) {
     const auto& grammar_filename{kParserParsingTableTestFiles.at(i)};
-    Parser p{grammar_filename};
+    RecursiveDescentParserGenerator p{grammar_filename};
 
     const auto& expected{kParsingTableExpected.at(i)};
     if (!IsParsingTableMatch(p, expected)) {
@@ -507,9 +512,9 @@ int main(int argc, char *argv[]) {
         static_cast<spdlog::level::level_enum>(spdlog::level::level_enum::debug));
 #endif
 
-  ParserTestSettings settings;
+  ParserGeneratorTestSettings settings;
 
-  CLI::App app{"parser_test - Parser Test File"};
+  CLI::App app{"parser_generator_test - Parser Test File"};
   app.add_flag("--test-compute-first",
                settings.test_compute_first,
                "Test the ComputFirst() function of the Parser");
@@ -521,7 +526,7 @@ int main(int argc, char *argv[]) {
                "Test the ComputParsingTable() function of the Parser");
   CLI11_PARSE(app, argc, argv);
 
-  ParserTest t{settings};
+  ParserGeneratorTest t{settings};
   t.RunTests();
 
   return 0;

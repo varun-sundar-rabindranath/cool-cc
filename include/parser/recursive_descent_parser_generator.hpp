@@ -1,28 +1,18 @@
 #pragma once
 
-#include <vector>
+/**
+ * Subclass of the general ParserGenerator class.
+ */
+
+#include <parser/parser_generator.hpp>
 #include <string>
-#include <unordered_set>
-#include <unordered_map>
-#include <parser/grammar_file_parser.hpp>
 
-#include <parser/production.hpp>
-
-// Parser base class
-class Parser {
+class RecursiveDescentParserGenerator : public ParserGenerator {
 
   public:
-    static const ProductionElement kEndOfInputTerminal; // this is the $ in dragon boo
-    static const ProductionElement kEmptyTerminal;
-
     using ProductionElementFirstSet =
         std::unordered_map<ProductionElement, ProductionElementSet, production_element_hash>;
     using ProductionElementFollowSet = ProductionElementFirstSet;
-
-    using ProductionElementIDMap =
-        std::unordered_map<ProductionElement, std::size_t, production_element_hash>;
-    using ProductionIDMap =
-        std::unordered_map<Production, std::size_t, production_hash>;
 
     /**
      * Recursive Descent Parsing Table
@@ -35,52 +25,22 @@ class Parser {
     using RDParsingTable = std::vector<std::vector<RDParsingTableEntry>>;
 
   public:
-    Parser(const std::string& grammar_filename);
+    RecursiveDescentParserGenerator(const std::string& grammar_filename);
 
-    // setters
-    void SetTerminals(const ProductionElementVector& terminals);
-    void SetNonTerminals(const ProductionElementVector& terminals);
-    void SetProductions(const ProductionVector& productions);
+    void WriteParsingTable(const std::string& filename) const;
 
     // getters
-    ProductionElementVector GetTerminals() const;
-    ProductionElementVector GetNonTerminals() const;
-    ProductionVector GetProductions() const;
     ProductionElementFirstSet GetFirsts() const;
     ProductionElementFollowSet GetFollows() const;
     std::vector<Production> GetParsingTableProductions(
       const ProductionElement& nt, const ProductionElement& t) const;
 
-    // debug functions
     void Dump() const;
-    void DumpState() const;
     void DumpFirst() const;
     void DumpFollow() const;
     void DumpParsingTable() const;
 
-    // Parser generator functions
-    void WriteSemanticRules(const std::string& filename) const;
-    void WriteParsingTableHeader(const std::string& filename) const;
-
   private:
-    // Actual State
-    std::string grammar_filename_;
-    ProductionElementVector terminals_;
-    ProductionElementVector non_terminals_;
-    ProductionVector productions_;
-    std::vector<std::string> productions_semantic_rules_;
-    ProductionElement start_symbol_;
-
-    std::vector<std::string> productions_semantic_rules_includes_;
-
-    // Derived State
-    /* ID mapping is only required for easy manipulation in algorithms
-     * and datastructures.
-     * The ID always starts from zero.
-     */
-    ProductionElementIDMap terminal_id_map_;
-    ProductionElementIDMap non_terminal_id_map_;
-    ProductionIDMap production_id_map_;
 
     // Derived State
     /* Hashmap with a Production Element as Key (can be both terminal and non-
@@ -112,5 +72,4 @@ class Parser {
     // return true if this production element can be empty ; false otherwise
     bool ComputeFirst(const ProductionElement& pe); // Fills the derived state
     void ComputeFollowPass();
-
 };

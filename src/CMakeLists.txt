@@ -6,7 +6,7 @@ add_executable(${COOLCC_EXECUTABLE_NAME}
 
 target_link_libraries(${COOLCC_EXECUTABLE_NAME}
 		      lexer
-		      parser
+		      parser_generator
 		      errorhandler
 		      utils
 		      fmt::fmt)

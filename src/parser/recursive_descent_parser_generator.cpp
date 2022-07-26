@@ -1,112 +1,36 @@
-#include "spdlog/spdlog.h"
-#include <stdexcept>
-#include <cassert>
-#include <algorithm>
-#include <parser/parser.hpp>
-#include <parser/grammar_file_parser.hpp>
-#include <stack>
-#include <limits>
-#include <iostream>
+#include <parser/recursive_descent_parser_generator.hpp>
 #include <fstream>
 
-const ProductionElement Parser::kEndOfInputTerminal =
-                        ProductionElement{ProductionElementType::TERMINAL, "$"};
-const ProductionElement Parser::kEmptyTerminal =
-                        ProductionElement{ProductionElementType::TERMINAL,
-                                          kGrammarFileEmptyTerminal};
-
-Parser::Parser(const std::string& grammar_filename) :
-  grammar_filename_{grammar_filename},
-  terminals_{},
-  non_terminals_{},
-  productions_{},
-  productions_semantic_rules_{},
-  productions_semantic_rules_includes_{},
-  terminal_id_map_{},
-  non_terminal_id_map_{},
-  production_id_map_{},
-  first_{},
-  follow_{},
-  rd_parsing_table_{}{
-
-  spdlog::debug("Parser({})", grammar_filename_);
-
-  ParseGrammarFile(grammar_filename_, &terminals_, &non_terminals_,
-		   &productions_, &productions_semantic_rules_,
-		   &productions_semantic_rules_includes_, &start_symbol_);
-
-  // Add End Of Input terminals to the terminals_ and start_symbol production
-  terminals_.push_back(kEndOfInputTerminal);
-  for (auto& p : productions_) {
-    if (p.left == start_symbol_) {
-      p.right.push_back(kEndOfInputTerminal);
-      // It is okay to break. ParseGrammarFile guarantees that the start_symbol_
-      // has only one production
-      break;
-    }
-  }
-
-  // Update terminal -> id, non_terminal -> id, produciton -> id maps
-  for (std::size_t id = 0; id < terminals_.size(); ++id) {
-    assert (terminal_id_map_.find(terminals_.at(id)) == terminal_id_map_.end());
-    terminal_id_map_.insert({terminals_.at(id), id});
-  }
-  for (std::size_t id = 0; id < non_terminals_.size(); ++id) {
-    assert (non_terminal_id_map_.find(non_terminals_.at(id)) == non_terminal_id_map_.end());
-    non_terminal_id_map_.insert({non_terminals_.at(id), id});
-  }
-  for (std::size_t id = 0; id < productions_.size(); ++id) {
-    assert (production_id_map_.find(productions_.at(id)) == production_id_map_.end());
-    production_id_map_.insert({productions_.at(id), id});
-  }
+RecursiveDescentParserGenerator::RecursiveDescentParserGenerator(
+  const std::string& grammar_filename) : ParserGenerator(grammar_filename),
+    first_{}, follow_{}, rd_parsing_table_{}
+{
 
   ComputeFirst();
   ComputeFollow();
 
-  DumpState();
   DumpFirst();
+
   DumpFollow();
 
   ComputeParsingTable();
 
   DumpParsingTable();
-}
 
-// setters
-void Parser::SetTerminals(const ProductionElementVector& terminals) {
-  terminals_ = terminals;
-}
-
-void Parser::SetNonTerminals(const ProductionElementVector& non_terminals) {
-  non_terminals_ = non_terminals;
-}
-
-void Parser::SetProductions(const ProductionVector& productions) {
-  productions_ = productions;
 }
 
 // getters
-ProductionElementVector Parser::GetTerminals() const {
-  return terminals_;
-}
-
-ProductionElementVector Parser::GetNonTerminals() const {
-  return non_terminals_;
-}
-
-ProductionVector Parser::GetProductions() const {
-  return productions_;
-}
-
-Parser::ProductionElementFirstSet Parser::GetFirsts() const {
+RecursiveDescentParserGenerator::ProductionElementFirstSet
+RecursiveDescentParserGenerator::GetFirsts() const {
   return first_;
 }
 
-Parser::ProductionElementFollowSet Parser::GetFollows() const {
+RecursiveDescentParserGenerator::ProductionElementFollowSet
+RecursiveDescentParserGenerator::GetFollows() const {
   return follow_;
 }
 
-std::vector<Production> Parser::GetParsingTableProductions(
+std::vector<Production> RecursiveDescentParserGenerator::GetParsingTableProductions(
       const ProductionElement& nt, const ProductionElement& t) const {
   const std::size_t nt_idx{non_terminal_id_map_.at(nt)};
   const std::size_t t_idx{terminal_id_map_.at(t)};
@@ -117,133 +41,30 @@ std::vector<Production> Parser::GetParsingTableProductions(
   return productions;
 }
 
-void Parser::DumpState() const {
+// Compute functions
+void RecursiveDescentParserGenerator::ComputeFirst() {
+  first_.clear();
+  /*
+   * For every non-terminal all the terminals that can kick off that non-terminal
+   * is in that non-terminal's first set
+   * Cases:
+   *  1. E -> abc ; a is in first(E)
+   *  2. E -> Tabc, T -> xy ; x is in first(E)
+   *  3. E -> Tabc, T -> xy, T-> epsilon ; {a, x} is in first(E)
+   */
 
-  spdlog::debug("Grammar file - {}", grammar_filename_);
-
-  spdlog::debug("Terminals ...");
+  // Compute firsts of terminals
   for (const auto& t : terminals_) {
-    spdlog::debug("{}", t.to_string());
+    ComputeFirst(t);
   }
 
-  spdlog::debug("Non Terminals ...");
+  // Compute firsts of non-terminals
   for (const auto& nt : non_terminals_) {
-    spdlog::debug("{}", nt.to_string());
-  }
-
-  spdlog::debug("Productions & Semantic Rules ...");
-  for (std::size_t i = 0; i < productions_.size(); ++i) {
-    spdlog::debug("{}", productions_.at(i).to_string());
-    spdlog::debug("{}", productions_semantic_rules_.at(i));
-  }
-
-  spdlog::debug("Start Symbol {} ", start_symbol_.to_string());
-}
-
-void Parser::DumpFirst() const {
-  // dump firsts
-  spdlog::debug("Firsts ...");
-  for (const auto& pe_terminals : first_) {
-    spdlog::debug("Firsts of {} is ", pe_terminals.first.to_string());
-    for (const auto& t : pe_terminals.second) {
-      spdlog::debug(" - {}", t.to_string());
-    }
+    ComputeFirst(nt);
   }
 }
 
-void Parser::DumpFollow() const {
-  // dump follow
-  spdlog::debug("Follow ...");
-  for (const auto& pe_terminals : follow_) {
-    spdlog::debug("Follows of {} is ", pe_terminals.first.to_string());
-    for (const auto& t : pe_terminals.second) {
-      spdlog::debug(" - {}", t.to_string());
-    }
-  }
-}
-
-void Parser::DumpParsingTable() const {
-
-  // dump parsing table
-  if (rd_parsing_table_.empty()) {
-    spdlog::debug("Parsing table is empty");
-    return;
-  }
-
-  const std::size_t n_rows{rd_parsing_table_.size()};
-  const std::size_t n_cols{rd_parsing_table_.at(0).size()};
-
-  const std::size_t cell_pre_padding{2};
-  const std::size_t cell_post_padding{2};
-
-  std::size_t cell_width{0};
-  std::size_t cell_height{0};
-  for (std::size_t r = 0; r < n_rows; ++r) {
-    for (std::size_t c = 0; c < n_cols; ++c) {
-      cell_height = std::max(cell_height, rd_parsing_table_[r][c].size());
-      for (const auto p_id : rd_parsing_table_[r][c]) {
-        const std::size_t p_size{productions_[p_id].to_string().length()};
-        cell_width = std::max(cell_width, p_size);
-      }
-    }
-  }
-
-  auto add_cell_text = [&](std::string* const dump_str,
-                           const std::string& cell_text) {
-    *dump_str += fmt::format("{:>{}}", cell_text, cell_pre_padding) +
-                 fmt::format("{:>{}}", "", (cell_width - cell_text.length()) + cell_post_padding);
-  };
-
-  auto add_cell_entry = [&](std::string* const dump_str, std::size_t entry_idx,
-                            int m, int n) {
-    if (rd_parsing_table_[m][n].size() <= entry_idx) {
-      // just cell_width + cell_padding spaces
-      add_cell_text(dump_str, entry_idx == 0 ? "Err" : "");
-      return;
-    }
-
-    const auto p_id = rd_parsing_table_[m][n][entry_idx];
-    const auto& entry = productions_[p_id];
-    add_cell_text(dump_str, entry.to_string());
-  };
-
-  // dump header row (terminals)
-  std::string header;
-  add_cell_text(&header, "");
-  for (std::size_t c = 0; c < n_cols; ++c) {
-    add_cell_text(&header, terminals_.at(c).element);
-  }
-  spdlog::debug("{}", header);
-  for (std::size_t r = 0; r < n_rows; ++r) {
-    std::string row_str;
-    for (std::size_t ch = 0; ch < cell_height; ++ch) {
-      if (ch == 0) {
-        add_cell_text(&row_str, non_terminals_.at(r).element);
-      } else {
-        add_cell_text(&row_str, "");
-      }
-
-      for (std::size_t c = 0; c < n_cols; ++c) {
-        add_cell_entry(&row_str, ch, r, c);
-      }
-    }
-
-    spdlog::debug("{}", row_str);
-  }
-}
-
-void Parser::Dump() const {
-
-  DumpState();
-
-  DumpFirst();
-
-  DumpFollow();
-
-  DumpParsingTable();
-}
-
-bool Parser::ComputeFirst(const ProductionElement& pe) {
+bool RecursiveDescentParserGenerator::ComputeFirst(const ProductionElement& pe) {
 
   // Intialize with an empty set; So we dont have to check again and again
   if (first_.find(pe) == first_.end()) {
@@ -296,29 +117,7 @@ bool Parser::ComputeFirst(const ProductionElement& pe) {
   return pe_can_be_empty;
 }
 
-void Parser::ComputeFirst() {
-  first_.clear();
-  /*
-   * For every non-terminal all the terminals that can kick off that non-terminal
-   * is in that non-terminal's first set
-   * Cases:
-   *  1. E -> abc ; a is in first(E)
-   *  2. E -> Tabc, T -> xy ; x is in first(E)
-   *  3. E -> Tabc, T -> xy, T-> epsilon ; {a, x} is in first(E)
-   */
-
-  // Compute firsts of terminals
-  for (const auto& t : terminals_) {
-    ComputeFirst(t);
-  }
-
-  // Compute firsts of non-terminals
-  for (const auto& nt : non_terminals_) {
-    ComputeFirst(nt);
-  }
-}
-
-void Parser::ComputeFollow() {
+void RecursiveDescentParserGenerator::ComputeFollow() {
   follow_.clear();
 
   /*
@@ -396,7 +195,8 @@ void Parser::ComputeFollow() {
   }
 }
 
-void Parser::ComputeFollowPass() {
+void RecursiveDescentParserGenerator::ComputeFollowPass() {
+
   // for every non terminal in the production - keep adding the firsts
   // of the following elements.
   // if end is reached - add the follow of the left side of the terminal
@@ -449,7 +249,7 @@ void Parser::ComputeFollowPass() {
   } // productions iterator
 }
 
-void Parser::ComputeParsingTable() {
+void RecursiveDescentParserGenerator::ComputeParsingTable() {
 
   auto add_firsts_of_production_element = [&](const ProductionElement& x,
                                               ProductionElementSet* const pe_set) {
@@ -536,126 +336,10 @@ void Parser::ComputeParsingTable() {
   } // productions_
 }
 
-void Parser::WriteSemanticRules(const std::string& filename) const {
-  spdlog::debug("Write semantic rules to {}", filename);
+// Parsing table writer
+void RecursiveDescentParserGenerator::WriteParsingTable(
+  const std::string& filename) const {
 
-  static const std::string kUsingStatements{
-    std::string("using ParseTreeNodePTR = std::shared_ptr<ParseTreeNode>;\n") +
-    std::string("using ParseTreeNodePTRS = std::vector<ParseTreeNodePTR>;\n") +
-    std::string("using ParseTreeNodeFPTR = ParseTreeNodePTR (*)(const ParseTreeNodePTRS&);\n")
-  };
-
-  auto make_semantic_rule_function_signature = [](const std::string& fname) -> std::string {
-    return fmt::format("ParseTreeNodePTR {}(const ParseTreeNodePTRS& PTN_right)",
-		       fname);
-  };
-
-  auto define_production_macros = [](const std::size_t n) -> std::string {
-    std::string s;
-    for (std::size_t i = 0; i < n; ++i) {
-      s += fmt::format("#define R{} PTN_right.at({})\n", i, i);
-    }
-    return s;
-  };
-
-  auto undef_production_macros = [](const std::size_t n) -> std::string {
-    std::string s;
-    for (std::size_t i = 0; i < n; ++i) {
-      s += fmt::format("#undef R{}\n", i);
-    }
-    return s;
-  };
-
-  auto make_production_function_name = [](const std::size_t production_idx) -> std::string {
-    return fmt::format("P{}", production_idx);
-  };
-
-  auto make_production_function_definition =
-    [make_semantic_rule_function_signature, define_production_macros, undef_production_macros]
-    (const Production& p, const std::string& production_function_name,
-     const std::string& semantic_rule) -> std::string {
-
-      std::string s;
-
-      // Add comment
-      s += fmt::format("\n\n/*** Production : {} ****/\n", p.to_string());
-
-      // macros defining R[0-9]+
-      s += define_production_macros(p.right.size());
-
-      s += make_semantic_rule_function_signature(production_function_name) + semantic_rule;
-
-      // undef the previously defined macros
-      s += undef_production_macros(p.right.size());
-
-      return s;
-    };
-
-  auto make_production_function_map = [make_production_function_name]
-    (const ProductionVector& productions,
-     const ProductionIDMap& production_id_map) -> std::string {
-      std::string map_defn;
-      // Add map include
-      map_defn += "#include<unordered_map>\n";
-
-      // Start map definition
-      map_defn +=
-        "extern const std::unordered_map<std::string,ParseTreeNodeFPTR> PRODUCTION_FUNCTION_MAP {\n";
-
-      for(const auto& production : productions) {
-        const auto production_function_name{make_production_function_name(
-            production_id_map.at(production))};
-	map_defn += fmt::format("\t {{ \"{}\", &{} }},\n",
-                                production_function_name,
-                                production_function_name);
-      }
-
-      // End map definition
-      map_defn += "\t };\n";
-
-      return map_defn;
-    };
-
-
-  // Open file stream
-  std::fstream f;
-  f.open(filename, std::fstream::out | std::fstream::trunc);
-  if (!f.is_open()) {
-    throw std::runtime_error(fmt::format("{} - Open failed | {}", filename, strerror(errno)));
-  }
-
-  // Write headers
-  for (const auto& h : productions_semantic_rules_includes_) {
-    f << h << std::endl;
-  }
-
-  // Write using statements
-  f << kUsingStatements << std::endl;
-
-  // Define MPTN - Make ParseTreeNode
-  f << fmt::format("#define MPTN(arg) ParseTreeNodePTR(dynamic_cast<ParseTreeNode*>(arg))") << std::endl;
-
-  // Add headers that are required by this code-generation block
-  f << "#include <memory>" <<std::endl;
-
-  // Write production semantic rules
-  assert (productions_.size() == productions_semantic_rules_.size());
-  for (std::size_t i = 0; i < productions_.size(); ++i) {
-    const auto& p{productions_.at(i)};
-    const auto& semantic_rule{productions_semantic_rules_.at(i)};
-
-    f << make_production_function_definition(
-            p, make_production_function_name(i), semantic_rule);
-  }
-
-  f << make_production_function_map(productions_, production_id_map_);
-
-  f << fmt::format("#undef MPTN") <<std::endl;
-
-  f.close();
-}
-
-void Parser::WriteParsingTableHeader(const std::string& filename) const {
   spdlog::debug("Write Parsing Table to {}", filename);
 
   // Open file stream
@@ -841,4 +525,108 @@ void Parser::WriteParsingTableHeader(const std::string& filename) const {
   }
 
   f.close();
+}
+
+// Dump functions
+void RecursiveDescentParserGenerator::Dump() const {
+
+  ParserGenerator::Dump();
+
+  DumpFirst();
+
+  DumpFollow();
+
+  DumpParsingTable();
+}
+
+void RecursiveDescentParserGenerator::DumpFirst() const {
+  // dump firsts
+  spdlog::debug("Firsts ...");
+  for (const auto& pe_terminals : first_) {
+    spdlog::debug("Firsts of {} is ", pe_terminals.first.to_string());
+    for (const auto& t : pe_terminals.second) {
+      spdlog::debug(" - {}", t.to_string());
+    }
+  }
+}
+
+void RecursiveDescentParserGenerator::DumpFollow() const {
+  // dump follow
+  spdlog::debug("Follow ...");
+  for (const auto& pe_terminals : follow_) {
+    spdlog::debug("Follows of {} is ", pe_terminals.first.to_string());
+    for (const auto& t : pe_terminals.second) {
+      spdlog::debug(" - {}", t.to_string());
+    }
+  }
+}
+
+void RecursiveDescentParserGenerator::DumpParsingTable() const {
+
+  // dump parsing table
+  if (rd_parsing_table_.empty()) {
+    spdlog::debug("Parsing table is empty");
+    return;
+  }
+
+  const std::size_t n_rows{rd_parsing_table_.size()};
+  const std::size_t n_cols{rd_parsing_table_.at(0).size()};
+
+  const std::size_t cell_pre_padding{2};
+  const std::size_t cell_post_padding{2};
+
+  std::size_t cell_width{0};
+  std::size_t cell_height{0};
+  for (std::size_t r = 0; r < n_rows; ++r) {
+    for (std::size_t c = 0; c < n_cols; ++c) {
+      cell_height = std::max(cell_height, rd_parsing_table_[r][c].size());
+      for (const auto p_id : rd_parsing_table_[r][c]) {
+        const std::size_t p_size{productions_[p_id].to_string().length()};
+        cell_width = std::max(cell_width, p_size);
+      }
+    }
+  }
+
+  auto add_cell_text = [&](std::string* const dump_str,
+                           const std::string& cell_text) {
+    *dump_str += fmt::format("{:>{}}", cell_text, cell_pre_padding) +
+                 fmt::format("{:>{}}", "", (cell_width - cell_text.length()) + cell_post_padding);
+  };
+
+  auto add_cell_entry = [&](std::string* const dump_str, std::size_t entry_idx,
+                            int m, int n) {
+    if (rd_parsing_table_[m][n].size() <= entry_idx) {
+      // just cell_width + cell_padding spaces
+      add_cell_text(dump_str, entry_idx == 0 ? "Err" : "");
+      return;
+    }
+
+    const auto p_id = rd_parsing_table_[m][n][entry_idx];
+    const auto& entry = productions_[p_id];
+    add_cell_text(dump_str, entry.to_string());
+  };
+
+  // dump header row (terminals)
+  std::string header;
+  add_cell_text(&header, "");
+  for (std::size_t c = 0; c < n_cols; ++c) {
+    add_cell_text(&header, terminals_.at(c).element);
+  }
+  spdlog::debug("{}", header);
+  for (std::size_t r = 0; r < n_rows; ++r) {
+    std::string row_str;
+    for (std::size_t ch = 0; ch < cell_height; ++ch) {
+      if (ch == 0) {
+        add_cell_text(&row_str, non_terminals_.at(r).element);
+      } else {
+        add_cell_text(&row_str, "");
+      }
+
+      for (std::size_t c = 0; c < n_cols; ++c) {
+        add_cell_entry(&row_str, ch, r, c);
+      }
+    }
+
+    spdlog::debug("{}", row_str);
+  }
 }
