@@ -28,17 +28,16 @@ target_link_libraries(${LEXER_TEST_EXECUTABLE_NAME}
 
 install(TARGETS ${LEXER_TEST_EXECUTABLE_NAME} DESTINATION bin)
 
-## parser_test ####
-set(PARSER_TEST_EXECUTABLE_NAME parser_test)
+## recursive descent parser generator test ####
+set(RDPG_TEST_EXECUTABLE_NAME recursive_descent_parser_generator_test)
 
-add_executable(${PARSER_TEST_EXECUTABLE_NAME}
-	       parser_test.cpp)
+add_executable(${RDPG_TEST_EXECUTABLE_NAME}
+               recursive_descent_parser_generator_test.cpp)
 
-target_link_libraries(${PARSER_TEST_EXECUTABLE_NAME}
-		      lexer
+target_link_libraries(${RDPG_TEST_EXECUTABLE_NAME}
 		      errorhandler
-		      parser
+                      parser_generator
 		      utils
 		      fmt::fmt)
 
-install(TARGETS ${PARSER_TEST_EXECUTABLE_NAME} DESTINATION bin)
+install(TARGETS ${RDPG_TEST_EXECUTABLE_NAME} DESTINATION bin)

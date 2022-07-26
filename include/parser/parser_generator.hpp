@@ -15,6 +15,7 @@
 
 class ParserGenerator {
 
+  public:
     static const ProductionElement kEndOfInputTerminal; // this is the $ in dragon boo
     static const ProductionElement kEmptyTerminal;
 
@@ -22,6 +23,7 @@ class ParserGenerator {
         std::unordered_map<ProductionElement, std::size_t, production_element_hash>;
     using ProductionIDMap =
         std::unordered_map<Production, std::size_t, production_hash>;
+
   public:
 
     ParserGenerator(const std::string& grammar_filename);
@@ -36,13 +38,12 @@ class ParserGenerator {
     ProductionElementVector GetNonTerminals() const;
     ProductionVector GetProductions() const;
 
-    void DumpState() const;
     void Dump() const;
 
     void WriteSemanticRules(const std::string& filename) const;
     virtual void WriteParsingTable(const std::string& filename) const = 0;
 
-  private:
+  protected:
     // Actual State
     std::string grammar_filename_;
     ProductionElementVector terminals_;

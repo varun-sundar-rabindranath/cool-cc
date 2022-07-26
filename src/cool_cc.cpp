@@ -3,7 +3,8 @@
 #include "spdlog/spdlog.h"
 
 #include "lexer/lexer.hpp"
-#include "parser/parser.hpp"
+//#include "parser/parser.hpp"
+#include "parser/recursive_descent_parser_generator.hpp"
 
 struct CoolCCAppSettings {
   std::string filename;
@@ -32,9 +33,12 @@ int RunParser(const std::string& grammar_definition_file_name) {
   spdlog::info("Running Parser ...");
   spdlog::info(" - Grammar definition file {}", grammar_definition_file_name);
 
-  Parser parser{grammar_definition_file_name};
-  parser.WriteSemanticRules("/home/varun/study/compilers/cool-cc/data/arith/arith_semantic_rules.cpp");
-  parser.WriteParsingTableHeader("/home/varun/study/compilers/cool-cc/data/arith/arith_parsing_table.cpp");
+  RecursiveDescentParserGenerator rd_parser_generator{grammar_definition_file_name};
+
+  rd_parser_generator.WriteSemanticRules(
+    "/home/varun/study/compilers/cool-cc/data/arith/arith_semantic_rules.cpp");
+  rd_parser_generator.WriteParsingTable(
+    "/home/varun/study/compilers/cool-cc/data/arith/arith_parsing_table.cpp");
   return 0;
 }
 

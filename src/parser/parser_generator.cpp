@@ -51,7 +51,7 @@ ParserGenerator::ParserGenerator(const std::string& grammar_filename) :
     production_id_map_.insert({productions_.at(id), id});
   }
 
-  DumpState();
+  Dump();
 }
 
 void ParserGenerator::WriteSemanticRules(const std::string& filename) const {
@@ -198,7 +198,7 @@ ProductionVector ParserGenerator::GetProductions() const {
   return productions_;
 }
 
-void ParserGenerator::DumpState() const {
+void ParserGenerator::Dump() const {
 
   spdlog::debug("Grammar file - {}", grammar_filename_);
 
