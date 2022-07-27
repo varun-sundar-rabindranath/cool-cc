@@ -385,12 +385,12 @@ void RecursiveDescentParserGenerator::WriteParsingTable(
       std::string definition;
 
       // Add required headers
-      definition += "#include <parser/parser.hpp> // ProductionElementIDMap\n";
+      definition += "#include <parser/parser_generator.hpp> // ProductionElementIDMap\n";
       definition += "#include <parser/production.hpp> // ProductionElementVector\n";
 
       // Start ProductionElementIDMap definition
       definition += fmt::format(
-        "extern const Parser::ProductionElementIDMap {}{{\n", var_name);
+        "extern const ParserGenerator::ProductionElementIDMap {}{{\n", var_name);
 
       // Define production element map entries
       std::size_t element_idx{0};
