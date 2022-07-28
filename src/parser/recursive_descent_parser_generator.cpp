@@ -349,27 +349,38 @@ void RecursiveDescentParserGenerator::WriteParsingTable(
     throw std::runtime_error(fmt::format("{} - Open failed | {}", filename, strerror(errno)));
   }
 
+  auto production_element_string = [](const ProductionElement& pe) -> std::string {
+
+    std::string pe_string;
+
+    // Determine production element type
+    const std::string pe_type_string =
+        pe.type == ProductionElementType::TERMINAL ?
+        "ProductionElementType::TERMINAL" : "ProductionElementType::NON_TERMINAL";
+
+    pe_string += fmt::format("{{ {}, \"{}\" }}", pe_type_string, pe.element);
+
+    return pe_string;
+  };
+
   auto define_production_element =
-    [](const ProductionElement& pe, const std::string& var_name) -> std::string {
+    [production_element_string](
+      const ProductionElement& pe, const std::string& var_name) -> std::string {
 
       std::string definition;
 
       // Add required headers
       definition += "#include <parser/production.hpp> // ProductionElement\n";
 
-      // Determine production element type
-      const std::string pe_type_string =
-        pe.type == ProductionElementType::TERMINAL ?
-        "ProductionElementType::TERMINAL" : "ProductionElementType::NON_TERMINAL";
-
       // Define production element
-      definition += fmt::format("extern const ProductionElement {} {{ {}, \"{}\" }};",
-                         var_name, pe_type_string, pe.element);
+      definition += fmt::format("extern const ProductionElement {} {};",
+                         var_name, production_element_string(pe));
       return definition;
     };
 
   auto define_production_element_vector =
-    [](const ProductionElementVector& pes, const std::string& var_name)
+    [production_element_string]
+    (const ProductionElementVector& pes, const std::string& var_name)
     -> std::string {
 
     std::string definition;
@@ -383,12 +394,8 @@ void RecursiveDescentParserGenerator::WriteParsingTable(
 
     // Define production elements
     for (std::size_t i = 0; i < pes.size(); ++i) {
-      const std::string pe_type_string =
-        pes.at(i).type == ProductionElementType::TERMINAL ?
-        "ProductionElementType::TERMINAL" : "ProductionElementType::NON_TERMINAL";
-
-      definition += fmt::format(
-        " ProductionElement {{ {}, \"{}\" }}", pe_type_string, pes.at(i).element);
+      definition += fmt::format(" ProductionElement {}",
+                                production_element_string(pes.at(i)));
       definition += i != pes.size() - 1 ? ",\n" : "\n";
     }
 
@@ -398,7 +405,8 @@ void RecursiveDescentParserGenerator::WriteParsingTable(
   };
 
   auto define_production_element_id_map =
-    [](const ProductionElementIDMap& pe_id_map, const std::string& var_name)
+    [production_element_string]
+    (const ProductionElementIDMap& pe_id_map, const std::string& var_name)
     -> std::string {
 
       std::string definition;
@@ -414,12 +422,8 @@ void RecursiveDescentParserGenerator::WriteParsingTable(
       // Define production element map entries
       std::size_t element_idx{0};
       for (const auto& pe_id : pe_id_map) {
-        const std::string pe_type_string =
-          pe_id.first.type == ProductionElementType::TERMINAL ?
-          "ProductionElementType::TERMINAL" : "ProductionElementType::NON_TERMINAL";
-
-        definition += fmt::format("  {{ ProductionElement{{ {}, \"{}\" }}, {} }}",
-                                  pe_type_string, pe_id.first.element, pe_id.second);
+        definition += fmt::format("  {{ ProductionElement{}, {} }}",
+                        production_element_string(pe_id.first), pe_id.second);
         definition += element_idx == pe_id_map.size() - 1 ? "\n" : ",\n";
         element_idx++;
       }
@@ -503,6 +507,51 @@ void RecursiveDescentParserGenerator::WriteParsingTable(
       return definition;
     };
 
+  auto define_production_vector =
+    [production_element_string]
+    (const ProductionVector& productions,
+     const std::string& var_name) -> std::string {
+      std::string definition;
+
+      // Add required headers
+      definition += "#include <parser/production.hpp> // ProductionVector\n";
+
+      // Start production vector definition
+      definition += fmt::format("extern const ProductionVector {} {{\n", var_name);
+
+      for (std::size_t pi = 0; pi < productions.size(); ++pi) {
+
+        const bool is_last_pi{pi == productions.size() - 1};
+        const auto& p{productions.at(pi)};
+
+        definition += " Production {\n";
+        // Write the left production element
+        definition += fmt::format("   ProductionElement{},\n",
+                                  production_element_string(p.left));
+
+        // Write all the right side productions as a vector
+        definition += "   ProductionElementVector{\n";
+        for (std::size_t rpe_i = 0; rpe_i < p.right.size(); ++rpe_i) {
+          const bool is_last_rpe{rpe_i == p.right.size() - 1};
+          const auto& rpe{p.right.at(rpe_i)};
+          definition += fmt::format("     ProductionElement{}",
+                                    production_element_string(rpe));
+          definition += is_last_rpe ? "\n" : ",\n";
+        }
+
+        // Close out ProductionElementVector definition
+        definition += "   }";
+        // Close out production definition
+        definition += "}";
+        definition += is_last_pi ? "\n" : ",\n";
+      }
+
+      // End production vector definition
+      definition += "};\n";
+
+      return definition;
+  };
+
   // Write Start Symbol
   {
     const std::string definition{
@@ -529,7 +578,7 @@ void RecursiveDescentParserGenerator::WriteParsingTable(
     const std::string definition {
       define_production_element_id_map(terminal_id_map_,
                                        "TERMINALS_ID_MAP_DEFINITION")};
-    f << " // Terminals ID Map"<< std::endl << definition << std::endl << std::endl;
+    f << "// Terminals ID Map"<< std::endl << definition << std::endl << std::endl;
   }
 
   // Write Non Terminals - ID map
@@ -537,7 +586,14 @@ void RecursiveDescentParserGenerator::WriteParsingTable(
     const std::string definition {
       define_production_element_id_map(non_terminal_id_map_,
                                        "NON_TERMINALS_ID_MAP_DEFINITION")};
-    f << " // Non Terminals ID Map"<< std::endl << definition << std::endl << std::endl;
+    f << "// Non Terminals ID Map"<< std::endl << definition << std::endl << std::endl;
+  }
+
+  // Write Productions
+  {
+    const std::string definition {
+      define_production_vector(productions_, "PRODUCTION_VECTOR_DEFINITION")};
+    f << "// Productions"<< std::endl << definition << std::endl << std::endl;
   }
 
   // Write ParsingTable
@@ -546,7 +602,7 @@ void RecursiveDescentParserGenerator::WriteParsingTable(
         define_parsing_table(terminal_id_map_, non_terminal_id_map_,
                              production_id_map_, rd_parsing_table_,
                              "PARSING_TABLE_DEFINITION")};
-    f << " // Parsing Table"<< std::endl << definition << std::endl << std::endl;
+    f << "// Parsing Table"<< std::endl << definition << std::endl << std::endl;
   }
 
   f.close();
