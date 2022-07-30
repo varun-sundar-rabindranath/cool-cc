@@ -56,223 +56,64 @@ ParserGenerator::ParserGenerator(const std::string& grammar_filename) :
 
 void ParserGenerator::WriteGrammerObjects(std::fstream& file_stream) const {
 
-  auto production_element_string = [](const ProductionElement& pe) -> std::string {
-
-    std::string pe_string;
-
-    // Determine production element type
-    const std::string pe_type_string =
-        pe.type == ProductionElementType::TERMINAL ?
-        "ProductionElementType::TERMINAL" : "ProductionElementType::NON_TERMINAL";
-
-    pe_string += fmt::format("{{ {}, \"{}\" }}", pe_type_string, pe.element);
-
-    return pe_string;
-  };
-
-  auto define_production_element =
-    [production_element_string](
-      const ProductionElement& pe, const std::string& var_name) -> std::string {
-
-      std::string definition;
-
-      // Add required headers
-      definition += "#include <parser/production.hpp> // ProductionElement\n";
-
-      // Define production element
-      definition += fmt::format("extern const ProductionElement {} {};",
-                         var_name, production_element_string(pe));
-      return definition;
-    };
-
-  auto define_production_element_vector =
-    [production_element_string]
-    (const ProductionElementVector& pes, const std::string& var_name)
-    -> std::string {
-
-    std::string definition;
-
-    // Add required headers
-    definition += "#include <parser/production.hpp> // ProductionElementVector\n";
-
-    // Start ProductionElementVector definition
-    definition += fmt::format("extern const ProductionElementVector {}{{\n",
-                              var_name);
-
-    // Define production elements
-    for (std::size_t i = 0; i < pes.size(); ++i) {
-      definition += fmt::format(" ProductionElement {}",
-                                production_element_string(pes.at(i)));
-      definition += i != pes.size() - 1 ? ",\n" : "\n";
-    }
-
-    // Close ProductionElementVector definition
-    definition += " };";
-    return definition;
-  };
-
-  auto define_production_element_id_map =
-    [production_element_string]
-    (const ProductionElementIDMap& pe_id_map, const std::string& var_name)
-    -> std::string {
-
-      std::string definition;
-
-      // Add required headers
-      definition += "#include <parser/parser_generator.hpp> // ProductionElementIDMap\n";
-      definition += "#include <parser/production.hpp> // ProductionElementVector\n";
-
-      // Start ProductionElementIDMap definition
-      definition += fmt::format(
-        "extern const ProductionElementIDMap {}{{\n", var_name);
-
-      // Define production element map entries
-      std::size_t element_idx{0};
-      for (const auto& pe_id : pe_id_map) {
-        definition += fmt::format("  {{ ProductionElement{}, {} }}",
-                        production_element_string(pe_id.first), pe_id.second);
-        definition += element_idx == pe_id_map.size() - 1 ? "\n" : ",\n";
-        element_idx++;
-      }
-
-      // End ProductionElementIDMap definition
-      definition += " };";
-
-      return definition;
-    };
-
-  auto production_string = [production_element_string] (const Production& p) -> std::string {
-
-    std::string definition;
-
-    definition += " Production {\n";
-    // Write the left production element
-    definition += fmt::format("   ProductionElement{},\n",
-                              production_element_string(p.left));
-
-    // Write all the right side productions as a vector
-    definition += "   ProductionElementVector{\n";
-    for (std::size_t rpe_i = 0; rpe_i < p.right.size(); ++rpe_i) {
-      const bool is_last_rpe{rpe_i == p.right.size() - 1};
-      const auto& rpe{p.right.at(rpe_i)};
-      definition += fmt::format("     ProductionElement{}",
-                                production_element_string(rpe));
-      definition += is_last_rpe ? "\n" : ",\n";
-    }
-
-    // Close out ProductionElementVector definition
-    definition += "   }";
-    // Close out production definition
-    definition += "}";
-
-    return definition;
-  };
-
-  auto define_production_vector =
-    [production_string]
-    (const ProductionVector& productions,
-     const std::string& var_name) -> std::string {
-      std::string definition;
-
-      // Add required headers
-      definition += "#include <parser/production.hpp> // ProductionVector\n";
-
-      // Start production vector definition
-      definition += fmt::format("extern const ProductionVector {} {{\n", var_name);
-
-      for (std::size_t pi = 0; pi < productions.size(); ++pi) {
-
-        const bool is_last_pi{pi == productions.size() - 1};
-        const auto& p{productions.at(pi)};
-        definition += production_string(p);
-        definition += is_last_pi ? "\n" : ",\n";
-      }
-
-      // End production vector definition
-      definition += "};";
-
-      return definition;
-  };
-
-  auto define_production_id_map = [production_string](
-    const ProductionIDMap& production_id_map,
-    const std::string& var_name) -> std::string {
-
-    std::string definition;
-
-    // Add required headers
-    definition += "#include <parser/production.hpp> // Production\n";
-
-    // Instantiate the definition
-    definition += fmt::format("extern const ProductionIDMap {} {{\n", var_name);
-
-    // Iterate through the map and add items
-    std::size_t p_counter = 0;
-    for (const auto& production_id : production_id_map) {
-      p_counter++;
-      const auto& p = production_id.first;
-      const auto& id = production_id.second;
-      definition += fmt::format("    {{ {}, {} }}", production_string(p), id);
-      definition += p_counter == production_id_map.size() ? "\n" : ",\n";
-    }
-
-    // Close definition of production map
-    definition += "};";
-
-    return definition;
-  };
+  // Write required headers
+  file_stream << "#include <parser/production.hpp>" <<std::endl << std::endl;
 
   // Write Start Symbol
   {
     const std::string definition{
-      define_production_element(start_symbol_, "START_SYMBOL")};
+      ProductionElementDefinitionString(
+        start_symbol_, "START_SYMBOL")};
     file_stream << "// Start Symbol"<< std::endl << definition << std::endl << std::endl;
   }
 
   // Write Terminals definition
   {
     const std::string definition{
-      define_production_element_vector(terminals_, "TERMINALS_DEFINITION")};
+      ProductionElementVectorDefinitionString(
+        terminals_, "TERMINALS_DEFINITION")};
     file_stream << "// Terminals"<< std::endl << definition << std::endl << std::endl;
   }
 
   // Write Non Terminals definition
   {
     const std::string definition{
-      define_production_element_vector(non_terminals_, "NON_TERMINALS_DEFINITION")};
+      ProductionElementVectorDefinitionString(
+        non_terminals_, "NON_TERMINALS_DEFINITION")};
     file_stream << "// Non Terminals"<< std::endl << definition << std::endl << std::endl;
   }
 
   // Write Terminals - ID map
   {
     const std::string definition {
-      define_production_element_id_map(terminal_id_map_,
-                                       "TERMINALS_ID_MAP_DEFINITION")};
+      ProductionElementIDMapDefinitionString(
+        terminal_id_map_, "TERMINALS_ID_MAP_DEFINITION")};
     file_stream << "// Terminals ID Map"<< std::endl << definition << std::endl << std::endl;
   }
 
   // Write Non Terminals - ID map
   {
     const std::string definition {
-      define_production_element_id_map(non_terminal_id_map_,
-                                       "NON_TERMINALS_ID_MAP_DEFINITION")};
+      ProductionElementIDMapDefinitionString(
+        non_terminal_id_map_, "NON_TERMINALS_ID_MAP_DEFINITION")};
     file_stream << "// Non Terminals ID Map"<< std::endl << definition << std::endl << std::endl;
   }
 
   // Write Productions
   {
     const std::string definition {
-      define_production_vector(productions_, "PRODUCTION_VECTOR_DEFINITION")};
+      ProductionVectorDefinitionString(
+        productions_, "PRODUCTION_VECTOR_DEFINITION")};
     file_stream << "// Productions"<< std::endl << definition << std::endl << std::endl;
   }
 
   // Write ProductionIDMap
   {
     const std::string definition {
-      define_production_id_map(production_id_map_, "PRODUCTION_ID_MAP_DEFINITION")};
-    file_stream << "// Production - ID Map"<< std::endl << definition << std::endl << std::endl; 
+      ProductionIDMapDefinitionString(
+        production_id_map_, "PRODUCTION_ID_MAP_DEFINITION")};
+    file_stream << "// Production - ID Map"<< std::endl << definition << std::endl << std::endl;
   }
-
 }
 
 void ParserGenerator::WriteSemanticRules(const std::string& filename) const {
@@ -440,4 +281,156 @@ void ParserGenerator::Dump() const {
   }
 
   spdlog::debug("Start Symbol {} ", start_symbol_.to_string());
+}
+
+// Writer utilities
+std::string ParserGenerator::BraceInitializedProductionElementString(
+  const ProductionElement& pe) const  {
+
+  std::string pe_string;
+
+  // Determine production element type
+  const std::string pe_type_string =
+      pe.type == ProductionElementType::TERMINAL ?
+      "ProductionElementType::TERMINAL" : "ProductionElementType::NON_TERMINAL";
+
+  pe_string += fmt::format("{{ {}, \"{}\" }}", pe_type_string, pe.element);
+
+  return pe_string;
+};
+
+
+std::string ParserGenerator::BraceInitializedProductionString(
+  const Production& p) const {
+
+  std::string definition;
+
+  definition += " Production {\n";
+  // Write the left production element
+  definition += fmt::format("   ProductionElement{},\n",
+                            BraceInitializedProductionElementString(p.left));
+
+  // Write all the right side productions as a vector
+  definition += "   ProductionElementVector{\n";
+  for (std::size_t rpe_i = 0; rpe_i < p.right.size(); ++rpe_i) {
+    const bool is_last_rpe{rpe_i == p.right.size() - 1};
+    const auto& rpe{p.right.at(rpe_i)};
+    definition += fmt::format("     ProductionElement{}",
+                              BraceInitializedProductionElementString(rpe));
+    definition += is_last_rpe ? "\n" : ",\n";
+  }
+
+  // Close out ProductionElementVector definition
+  definition += "   }";
+  // Close out production definition
+  definition += "}";
+
+  return definition;
+}
+
+std::string ParserGenerator::ProductionElementDefinitionString(
+  const ProductionElement& pe, const std::string& var_name) const {
+
+  std::string definition;
+
+  // Define production element
+  definition += fmt::format("extern const ProductionElement {} {};",
+                         var_name, BraceInitializedProductionElementString(pe));
+  return definition;
+}
+
+std::string ParserGenerator::ProductionElementVectorDefinitionString(
+  const ProductionElementVector& pes, const std::string& var_name) const {
+
+  std::string definition;
+
+  // Start ProductionElementVector definition
+  definition += fmt::format("extern const ProductionElementVector {}{{\n",
+                            var_name);
+
+  // Define production elements
+  for (std::size_t i = 0; i < pes.size(); ++i) {
+    definition += fmt::format(" ProductionElement {}",
+                              BraceInitializedProductionElementString(pes.at(i)));
+    definition += i != pes.size() - 1 ? ",\n" : "\n";
+  }
+
+  // Close ProductionElementVector definition
+  definition += " };";
+  return definition;
+}
+
+std::string ParserGenerator::ProductionElementIDMapDefinitionString(
+  const ProductionElementIDMap& pe_id_map, const std::string& var_name) const {
+
+  std::string definition;
+
+  // Start ProductionElementIDMap definition
+  definition += fmt::format(
+    "extern const ProductionElementIDMap {}{{\n", var_name);
+
+  // Define production element map entries
+  std::size_t element_idx{0};
+  for (const auto& pe_id : pe_id_map) {
+    definition += fmt::format("  {{ ProductionElement{}, {} }}",
+                    BraceInitializedProductionElementString(pe_id.first),
+                    pe_id.second);
+    definition += element_idx == pe_id_map.size() - 1 ? "\n" : ",\n";
+    element_idx++;
+  }
+
+  // End ProductionElementIDMap definition
+  definition += " };";
+
+  return definition;
+}
+
+std::string ParserGenerator::ProductionVectorDefinitionString(
+  const ProductionVector& productions, const std::string& var_name) const {
+
+  std::string definition;
+
+  // Start production vector definition
+  definition += fmt::format("extern const ProductionVector {} {{\n", var_name);
+
+  for (std::size_t pi = 0; pi < productions.size(); ++pi) {
+
+    const bool is_last_pi{pi == productions.size() - 1};
+    const auto& p{productions.at(pi)};
+    definition += BraceInitializedProductionString(p);
+    definition += is_last_pi ? "\n" : ",\n";
+  }
+
+  // End production vector definition
+  definition += "};";
+
+  return definition;
+}
+
+std::string ParserGenerator::ProductionIDMapDefinitionString(
+  const ProductionIDMap& production_id_map, const std::string& var_name) const {
+
+  std::string definition;
+
+  // Add required headers
+  definition += "#include <parser/production.hpp> // Production\n";
+
+  // Instantiate the definition
+  definition += fmt::format("extern const ProductionIDMap {} {{\n", var_name);
+
+  // Iterate through the map and add items
+  std::size_t p_counter = 0;
+  for (const auto& production_id : production_id_map) {
+    p_counter++;
+    const auto& p = production_id.first;
+    const auto& id = production_id.second;
+    definition += fmt::format("    {{ {}, {} }}",
+                              BraceInitializedProductionString(p), id);
+    definition += p_counter == production_id_map.size() ? "\n" : ",\n";
+  }
+
+  // Close definition of production map
+  definition += "};";
+
+  return definition;
 }

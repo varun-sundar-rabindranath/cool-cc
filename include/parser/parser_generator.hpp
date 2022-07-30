@@ -59,4 +59,24 @@ class ParserGenerator {
     ProductionElementIDMap terminal_id_map_;
     ProductionElementIDMap non_terminal_id_map_;
     ProductionIDMap production_id_map_;
+
+    // Writer utilities
+
+    // Braced-Initialized writer utilities
+    std::string BraceInitializedProductionElementString(
+      const ProductionElement& pe) const;
+    std::string BraceInitializedProductionString(const Production& p) const;
+
+    // Definition writer utilities
+    std::string ProductionElementDefinitionString(
+      const ProductionElement& pe, const std::string& var_name) const;
+    std::string ProductionElementVectorDefinitionString(
+      const ProductionElementVector& pes, const std::string& var_name) const;
+    std::string ProductionElementIDMapDefinitionString(
+     const ProductionElementIDMap& pe_id_map, const std::string& var_name) const;
+    std::string ProductionVectorDefinitionString(
+      const ProductionVector& productions, const std::string& var_name) const;
+    std::string ProductionIDMapDefinitionString(
+      const ProductionIDMap& production_id_map,
+      const std::string& var_name) const;
 };
