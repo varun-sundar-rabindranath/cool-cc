@@ -11,3 +11,11 @@ target_link_libraries(${LIBRARY_NAME}
 		      fmt::fmt)
 
 install(TARGETS ${LIBRARY_NAME} DESTINATION lib)
+
+set (LIBRARY_NAME recursive_descent_parser)
+
+add_library(${LIBRARY_NAME}
+            SHARED
+            recursive_descent_parser.cpp)
+
+install(TARGETS ${LIBRARY_NAME} DESTINATION lib)
