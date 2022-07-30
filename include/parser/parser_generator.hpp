@@ -12,6 +12,7 @@
 
 #include <unordered_map>
 #include <parser/production.hpp>
+#include <fstream>
 
 class ParserGenerator {
 
@@ -36,6 +37,7 @@ class ParserGenerator {
     void Dump() const;
 
     void WriteSemanticRules(const std::string& filename) const;
+    void WriteGrammerObjects(std::fstream& file_stream) const;
     virtual void WriteParsingTable(const std::string& filename) const = 0;
 
   protected:
