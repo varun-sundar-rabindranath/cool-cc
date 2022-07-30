@@ -8,6 +8,11 @@
 #include <vector>
 #include <memory>
 
+class ParseTreeNode;
+using ParseTreeNodePTR = std::shared_ptr<ParseTreeNode>;
+using ParseTreeNodePTRS = std::vector<ParseTreeNodePTR>;
+using ParseTreeNodeFPTR = ParseTreeNodePTR (*)(const ParseTreeNodePTRS&);
+
 class ParseTreeNode {
   public:
     ParseTreeNode(const std::vector<std::shared_ptr<ParseTreeNode>> right) 
