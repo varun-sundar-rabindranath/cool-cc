@@ -19,11 +19,6 @@ class ParserGenerator {
     static const ProductionElement kEndOfInputTerminal; // this is the $ in dragon boo
     static const ProductionElement kEmptyTerminal;
 
-    using ProductionElementIDMap =
-        std::unordered_map<ProductionElement, std::size_t, production_element_hash>;
-    using ProductionIDMap =
-        std::unordered_map<Production, std::size_t, production_hash>;
-
   public:
 
     ParserGenerator(const std::string& grammar_filename);

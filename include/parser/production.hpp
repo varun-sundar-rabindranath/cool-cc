@@ -12,12 +12,17 @@ struct production_element_hash;
 struct Production;
 struct production_hash;
 
-using ProductionElementSet =
-  std::unordered_set<ProductionElement, production_element_hash>;
-using ProductionElement_Production_Map =
-  std::unordered_map<ProductionElement, std::vector<Production>, production_element_hash>;
+using ProductionElementSet = std::unordered_set<ProductionElement,
+                                                production_element_hash>;
+using ProductionElement_Production_Map = std::unordered_map<ProductionElement,
+                                                            std::vector<Production>,
+                                                            production_element_hash>;
 using ProductionElementVector = std::vector<ProductionElement>;
 using ProductionVector = std::vector<Production>;
+using ProductionElementIDMap = std::unordered_map<ProductionElement,
+                                                  std::size_t,
+                                                  production_element_hash>;
+using ProductionIDMap = std::unordered_map<Production, std::size_t, production_hash>;
 
 enum ProductionElementType {
   TERMINAL = 0,

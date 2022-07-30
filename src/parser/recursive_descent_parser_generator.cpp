@@ -417,7 +417,7 @@ void RecursiveDescentParserGenerator::WriteParsingTable(
 
       // Start ProductionElementIDMap definition
       definition += fmt::format(
-        "extern const ParserGenerator::ProductionElementIDMap {}{{\n", var_name);
+        "extern const ProductionElementIDMap {}{{\n", var_name);
 
       // Define production element map entries
       std::size_t element_idx{0};
@@ -507,8 +507,35 @@ void RecursiveDescentParserGenerator::WriteParsingTable(
       return definition;
     };
 
+  auto production_string = [production_element_string] (const Production& p) -> std::string {
+
+    std::string definition;
+
+    definition += " Production {\n";
+    // Write the left production element
+    definition += fmt::format("   ProductionElement{},\n",
+                              production_element_string(p.left));
+
+    // Write all the right side productions as a vector
+    definition += "   ProductionElementVector{\n";
+    for (std::size_t rpe_i = 0; rpe_i < p.right.size(); ++rpe_i) {
+      const bool is_last_rpe{rpe_i == p.right.size() - 1};
+      const auto& rpe{p.right.at(rpe_i)};
+      definition += fmt::format("     ProductionElement{}",
+                                production_element_string(rpe));
+      definition += is_last_rpe ? "\n" : ",\n";
+    }
+
+    // Close out ProductionElementVector definition
+    definition += "   }";
+    // Close out production definition
+    definition += "}";
+
+    return definition;
+  };
+
   auto define_production_vector =
-    [production_element_string]
+    [production_string]
     (const ProductionVector& productions,
      const std::string& var_name) -> std::string {
       std::string definition;
@@ -523,33 +550,42 @@ void RecursiveDescentParserGenerator::WriteParsingTable(
 
         const bool is_last_pi{pi == productions.size() - 1};
         const auto& p{productions.at(pi)};
-
-        definition += " Production {\n";
-        // Write the left production element
-        definition += fmt::format("   ProductionElement{},\n",
-                                  production_element_string(p.left));
-
-        // Write all the right side productions as a vector
-        definition += "   ProductionElementVector{\n";
-        for (std::size_t rpe_i = 0; rpe_i < p.right.size(); ++rpe_i) {
-          const bool is_last_rpe{rpe_i == p.right.size() - 1};
-          const auto& rpe{p.right.at(rpe_i)};
-          definition += fmt::format("     ProductionElement{}",
-                                    production_element_string(rpe));
-          definition += is_last_rpe ? "\n" : ",\n";
-        }
-
-        // Close out ProductionElementVector definition
-        definition += "   }";
-        // Close out production definition
-        definition += "}";
+        definition += production_string(p);
         definition += is_last_pi ? "\n" : ",\n";
       }
 
       // End production vector definition
-      definition += "};\n";
+      definition += "};";
 
       return definition;
+  };
+
+  auto define_production_id_map = [production_string](
+    const ProductionIDMap& production_id_map,
+    const std::string& var_name) -> std::string {
+
+    std::string definition;
+
+    // Add required headers
+    definition += "#include <parser/production.hpp> // Production\n";
+
+    // Instantiate the definition
+    definition += fmt::format("extern const ProductionIDMap {} {{\n", var_name);
+
+    // Iterate through the map and add items
+    std::size_t p_counter = 0;
+    for (const auto& production_id : production_id_map) {
+      p_counter++;
+      const auto& p = production_id.first;
+      const auto& id = production_id.second;
+      definition += fmt::format("    {{ {}, {} }}", production_string(p), id);
+      definition += p_counter == production_id_map.size() ? "\n" : ",\n";
+    }
+
+    // Close definition of production map
+    definition += "};";
+
+    return definition;
   };
 
   // Write Start Symbol
@@ -594,6 +630,13 @@ void RecursiveDescentParserGenerator::WriteParsingTable(
     const std::string definition {
       define_production_vector(productions_, "PRODUCTION_VECTOR_DEFINITION")};
     f << "// Productions"<< std::endl << definition << std::endl << std::endl;
+  }
+
+  // Write ProductionIDMap
+  {
+    const std::string definition {
+      define_production_id_map(production_id_map_, "PRODUCTION_ID_MAP_DEFINITION")};
+    f << "// Production - ID Map"<< std::endl << definition << std::endl << std::endl; 
   }
 
   // Write ParsingTable
