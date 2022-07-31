@@ -1,0 +1,1 @@
+install(DIRECTORY ./ DESTINATION include/lexer FILES_MATCHING PATTERN "*.hpp")

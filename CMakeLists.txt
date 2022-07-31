@@ -22,5 +22,6 @@ set(CMAKE_INSTALL_RPATH $ENV{COOLCC_INSTALL_DIR}/lib)
 find_package(fmt REQUIRED)
 find_package(spdlog REQUIRED)
 
+add_subdirectory(include)
 add_subdirectory(src)
 add_subdirectory(test)
