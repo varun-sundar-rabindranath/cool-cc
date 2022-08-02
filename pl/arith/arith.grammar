@@ -1,7 +1,7 @@
 // This is a comment
 
 INCLUDES:
-#include "./../data/arith/arith_ast.hpp"
+#include "arith_ast.hpp"
 
 TERMINALS:
 // ideally this should be what the lexer gives you. but lets comeback to that later
