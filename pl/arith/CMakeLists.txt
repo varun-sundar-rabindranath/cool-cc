@@ -11,12 +11,18 @@ execute_process(COMMAND ${PARSING_FILES_GENERATOR_CMD}
                 --grammar-definition-filename ${GRAMMAR_DEFINITION_FILENAME}
                 --output-directory ${PARSING_FILES_GENERATOR_OUTPUT_DIRECTORY}
                 OUTPUT_VARIABLE CMD_OUT
-                ERROR_VARIABLE CMD_ERR)
+                ERROR_VARIABLE CMD_ERR
+		RESULT_VARIABLE CMD_RET)
 
-message(STATUS ${PARSING_FILES_GENERATOR_CMD})
 message(STATUS "  - Input : " ${GRAMMAR_DEFINITION_FILENAME} " , " ${PARSING_FILES_GENERATOR_OUTPUT_DIRECTORY})
 message(STATUS "  - Output :\n" ${CMD_OUT})
-message(STATUS "  - Error :\n " ${CMD_ERR})
+
+message(STATUS ${PARSING_FILES_GENERATOR_CMD})
+
+if(NOT ${CMD_RET} EQUAL 0)
+  message(STATUS "  - Error :\n " ${CMD_ERR})
+  message(FATAL_ERROR ${PARSING_FILES_GENERATOR_CMD} " failed")
+endif()
 
 ## Build arith library
 
