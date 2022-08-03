@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16.3)
 
-project(cool-cc)
+project(compiler)
 
 # Directories
 set(PROJECT_INCLUDE_DIRECTORY ${PROJECT_SOURCE_DIR}/include)
@@ -16,7 +16,7 @@ include_directories(${PROJECT_INCLUDE_DIRECTORY})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin )
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib )
-set(CMAKE_INSTALL_RPATH $ENV{COOLCC_INSTALL_DIR}/lib)
+set(CMAKE_INSTALL_RPATH $ENV{COMPILER_INSTALL_DIR}/lib)
 
 # Required external libraries
 find_package(fmt REQUIRED)
