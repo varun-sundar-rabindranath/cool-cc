@@ -6,6 +6,9 @@
 #include <spdlog/spdlog.h>
 #include <CLI/CLI11.hpp>
 
+// TODO Absolutely horrendous! please find a different way
+#define TEST_SRC_PATH "/home/varun/study/compilers/cool-cc/compiler/test-src"
+
 // Test utilities
 static ProductionElement MakePETerminal(const std::string& t) {
   return ProductionElement{ProductionElementType::TERMINAL, t};
@@ -35,30 +38,30 @@ static const std::vector<std::string> kParserGeneratorTestFiles {
   /**
    * E -> abc
    */
-  "./test-src/parser-test-grammar-files/config_a.grammar",
+  std::string(TEST_SRC_PATH) + "/parser-test-grammar-files/config_a.grammar",
   /**
    * E -> Tabc
    * T -> xy
    */
-  "./test-src/parser-test-grammar-files/config_b.grammar",
+  std::string(TEST_SRC_PATH) + "/parser-test-grammar-files/config_b.grammar",
   /**
    * E -> Tabc
    * T -> xy
    * T -> %empty
    */
-  "./test-src/parser-test-grammar-files/config_c.grammar",
+  std::string(TEST_SRC_PATH) + "/parser-test-grammar-files/config_c.grammar",
   /**
    * E -> a X b c
    * X -> x y;
    */
-  "./test-src/parser-test-grammar-files/config_d.grammar",
+  std::string(TEST_SRC_PATH) + "/parser-test-grammar-files/config_d.grammar",
   /**
    * E -> a X Y b c
    * X -> x y
    * Y -> p q
    * Y -> %empty
    */
-  "./test-src/parser-test-grammar-files/config_e.grammar",
+  std::string(TEST_SRC_PATH) + "/parser-test-grammar-files/config_e.grammar",
   /**
    * E -> a X Y1 Y2 b c
    * X -> x y
@@ -67,19 +70,19 @@ static const std::vector<std::string> kParserGeneratorTestFiles {
    * Y2 -> p2 q2
    * Y2 -> epsilon
    */
-  "./test-src/parser-test-grammar-files/config_f.grammar",
+  std::string(TEST_SRC_PATH) + "/parser-test-grammar-files/config_f.grammar",
   /**
    * E -> a X
    * T -> b E c
    * X -> x y
    */
-  "./test-src/parser-test-grammar-files/config_g.grammar",
+  std::string(TEST_SRC_PATH) + "/parser-test-grammar-files/config_g.grammar",
   /**
    * E -> a X
    * X -> b E c
    * E -> m
    */
-  "./test-src/parser-test-grammar-files/config_h.grammar"
+  std::string(TEST_SRC_PATH) + "/parser-test-grammar-files/config_h.grammar"
 };
 
 static const std::vector<RecursiveDescentParserGenerator::ProductionElementFirstSet>
@@ -240,7 +243,7 @@ static const std::vector<std::string> kParserParsingTableTestFiles {
   /**
    * arithmetic operations with + and * with precedence enforced
    */
-  "./test-src/parser-test-grammar-files/arith.grammar"
+  std::string(TEST_SRC_PATH) + "/parser-test-grammar-files/arith.grammar"
 };
 
 using kParsingTableEntries = std::vector<ParsingTableEntry>;
