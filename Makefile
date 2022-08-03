@@ -24,12 +24,25 @@ pl-install:
 pl-purge:
 	make -f ./pl/Makefile purge
 
+# apps - related commands
+.PHONY: apps-build
+apps-build: pl-build pl-install
+	make -f ./apps/Makefile build
+
+.PHONY: apps-install
+apps-install:
+	make -f ./apps/Makefile install
+
+.PHONY: apps-purge
+apps-purge:
+	make -f ./apps/Makefile purge
+
 # all builds
 .PHONY: build
-build: compiler-build pl-build
+build: compiler-build pl-build apps-build
 
 .PHONY: install
-install: compiler-install pl-install
+install: compiler-install pl-install apps-install
 
 .PHONY: purge
-purge: compiler-purge pl-purge
+purge: compiler-purge pl-purge apps-purge
