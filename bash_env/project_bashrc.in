@@ -1,4 +1,4 @@
-# Bash environment setup for building cool-cc and running cool-cc executables
+# Bash environment setup for building the project and running the project executables
 
 if test -e "$HOME/.bashrc"; then
   source "$HOME/.bashrc"
@@ -7,8 +7,8 @@ fi
 if [[ -e /usr/lib/git-core/git-sh-prompt ]]; then
   . /usr/lib/git-core/git-sh-prompt
 __git_branch() {
-  if [ -d "${COOLCC_SOURCE_DIR}" ]; then
-    pushd ${COOLCC_SOURCE_DIR} > /dev/null
+  if [ -d "${PROJECT_SOURCE_DIR}" ]; then
+    pushd ${PROJECT_SOURCE_DIR} > /dev/null
     __git_ps1 "[%s]"
     popd > /dev/null
   fi
